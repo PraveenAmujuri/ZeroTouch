@@ -1,34 +1,73 @@
 import cv2
 from core.camera import ZeroTouchCamera
 from core.gesture_engine import GestureEngine
+from ui.dicom_viewer import DICOMViewer
 
 def main():
     camera = ZeroTouchCamera()
     engine = GestureEngine()
+    viewer = DICOMViewer()
+
+    # Sensitivity for brightness only
+    # Increasing this makes the brightness change faster with vertical hand movement
+    BRIGHTNESS_SENSITIVITY = 250 
 
     while True:
-        frame, landmarks = camera.process_frame()
-
-        if frame is None:
+        cam_frame, landmarks = camera.process_frame()
+        if cam_frame is None:
             break
 
-        # Update gesture engine
         gesture = engine.update(landmarks)
 
-        # If gesture detected, print and display
         if gesture:
-            print("Gesture:", gesture)
-            cv2.putText(
-                frame,
-                gesture,
-                (50, 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                3
-            )
+            if gesture == "SWIPE RIGHT":
+                viewer.next_slice()
+                print(">>> NEXT SLICE")
+            elif gesture == "SWIPE LEFT":
+                viewer.prev_slice()
+                print(">>> PREV SLICE")
+            elif "ZOOM IN" in gesture:
+                viewer.zoom_in()
+                print(">>> ZOOM IN")
+            elif "ZOOM OUT" in gesture:
+                viewer.zoom_out()
+                print(">>> ZOOM OUT")
+            elif isinstance(gesture, tuple) and gesture[0] == "BRIGHTNESS":
+                _, dy = gesture
+                viewer.adjust_window_center(-dy * 200)  # Reduced sensitivity
 
-        cv2.imshow("ZeroTouch Vision Core", frame)
+
+        # Rendering
+        dicom_frame = viewer.get_current_frame()
+        cam_resized = cv2.resize(cam_frame, (600, 600))
+        dicom_color = cv2.cvtColor(dicom_frame, cv2.COLOR_GRAY2BGR)
+
+        # UI Overlay - System Status
+        status_color = (0, 255, 0) if engine.state == "ARMED" else (0, 0, 255)
+        cv2.putText(
+            cam_resized,
+            f"SYSTEM: {engine.state}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            status_color,
+            2
+        )
+        
+        # Displaying current Brightness (Window Center) for feedback
+        cv2.putText(
+            dicom_color,
+            f"BRIGHTNESS (C): {int(viewer.window_center)}",
+            (20, 580),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2
+        )
+
+        # Combine camera view and DICOM viewer
+        combined = cv2.hconcat([cam_resized, dicom_color])
+        cv2.imshow("ZeroTouch Radiology: Brightness & Navigation Mode", combined)
 
         # Press ESC to exit
         if cv2.waitKey(1) & 0xFF == 27:

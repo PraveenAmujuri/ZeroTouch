@@ -28,7 +28,17 @@ class ZeroTouchCamera:
             return None, None
 
         frame = cv2.flip(frame, 1)
-        frame = self.preprocess(frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        mean_brightness = np.mean(gray)
+
+        # If too dark → enhance
+        if mean_brightness < 60:
+            frame = self.preprocess(frame)
+
+        # If too bright → mild normalization
+        elif mean_brightness > 200:
+            frame = cv2.convertScaleAbs(frame, alpha=0.9, beta=-10)
+
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(rgb)
