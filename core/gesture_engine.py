@@ -70,9 +70,9 @@ class GestureEngine:
         diff = end - start
         dx, dy = diff
 
-# -------------------------
-# ARM SYSTEM (TWO FINGERS)
-# -------------------------
+        # -------------------------
+        # ARM SYSTEM (TWO FINGERS)
+        # -------------------------
 
         if self.state == "IDLE":
 
