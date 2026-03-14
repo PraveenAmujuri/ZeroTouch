@@ -2,112 +2,147 @@ import numpy as np
 from collections import deque
 import time
 
+
 class GestureEngine:
+
     def __init__(self):
-        self.history = deque(maxlen=15)
-        
-        # --- STRICTER Thresholds ---
-        self.min_swipe_dist = 0.18        # Need BIGGER movement
-        self.min_dx_swipe = 0.10          # Stronger horizontal minimum
-        self.brightness_threshold = 0.08  # 60% higher (48px minimum)
-        self.min_vert_bias = 8.0          # 8x vertical bias (was 5x)
-        
-        # Pinch/Zoom
-        self.pinch_start_threshold = 0.04
-        self.zoom_cooldown = 0.3
-        self.last_zoom_time = 0
 
-        # States
+        self.history = deque(maxlen=12)
+
         self.state = "IDLE"
-        self.palm_start_time = None
-        self.arm_duration = 0.8
-        self.cooldown_time = 1.0          # Longer cooldown
-        self.last_action_time = time.time()
 
-    def is_open_palm(self, landmarks):
-        tips = [8, 12, 16, 20]; pips = [6, 10, 14, 18]
-        extended = sum(1 for t, p in zip(tips, pips) if landmarks[t][1] < landmarks[p][1])
-        return extended >= 4 
+        self.arm_start = None
+        self.arm_time = 0.7
+
+        self.swipe_threshold = 0.10
+        self.vertical_threshold = 0.08
+
+        self.last_pinch_dist = None
+
+    # -------------------------
+    # Finger Detection
+    # -------------------------
+
+    def get_finger_state(self, landmarks):
+
+        tips = [8, 12, 16, 20]
+        pips = [6, 10, 14, 18]
+
+        fingers = []
+
+        for tip, pip in zip(tips, pips):
+
+            if landmarks[tip][1] < landmarks[pip][1]:
+                fingers.append(1)
+            else:
+                fingers.append(0)
+
+        return fingers
+
+    # -------------------------
+    # Update
+    # -------------------------
 
     def update(self, landmarks):
-        current_time = time.time()
 
         if landmarks is None:
-            self.state = "IDLE"
             self.history.clear()
+            self.last_pinch_dist = None
             return None
 
-        curr_p = np.array(landmarks[8][:2])
-        self.history.append(curr_p)
-        
-        if len(self.history) < 12:  # Need more stable history
+        fingers = self.get_finger_state(landmarks)
+
+        index = np.array(landmarks[8][:2])
+        thumb = np.array(landmarks[4][:2])
+
+        pinch_dist = np.linalg.norm(index - thumb)
+
+        self.history.append(index)
+
+        if len(self.history) < 10:
             return None
+
+        points = np.array(self.history)
+
+        start = np.mean(points[:5], axis=0)
+        end = np.mean(points[-5:], axis=0)
+
+        diff = end - start
+        dx, dy = diff
+
+# -------------------------
+# ARM SYSTEM (TWO FINGERS)
+# -------------------------
 
         if self.state == "IDLE":
-            if self.is_open_palm(landmarks):
-                if self.palm_start_time is None:
-                    self.palm_start_time = current_time
-                elif current_time - self.palm_start_time >= self.arm_duration:
+
+            # index + middle finger open
+            if fingers == [1,1,0,0]:
+
+                if self.arm_start is None:
+                    self.arm_start = time.time()
+
+                elif time.time() - self.arm_start > self.arm_time:
                     self.state = "ARMED"
                     self.history.clear()
-                    print("--- SYSTEM ARMED ---")
+                    print("SYSTEM ARMED")
+
             else:
-                self.palm_start_time = None
+                self.arm_start = None
+
             return None
 
-        if self.state == "COOLDOWN":
-            if current_time - self.last_action_time >= self.cooldown_time:
+        # -------------------------
+        # INDEX FINGER SWIPES
+        # -------------------------
+
+        if self.state == "ARMED" and fingers == [1,0,0,0]:
+
+            if abs(dx) > self.swipe_threshold and abs(dx) > abs(dy):
+
                 self.state = "IDLE"
-            return None
+                self.history.clear()
 
-        if self.state == "ARMED":
-            points = np.array(self.history)
-            n = len(points)
-            start_avg = np.mean(points[:n//2], axis=0)
-            end_avg = np.mean(points[n//2:], axis=0)
-            diff = end_avg - start_avg
-            dx, dy = diff
-            dist = np.linalg.norm(diff)
-            
-            # LESS VERBOSE DEBUG (only bigger moves)
-            if dist > 0.05:
-                print(f"dx:{dx:.3f} dy:{dy:.3f} dist:{dist:.3f} (~{dist*640:.0f}px)")
-            
-            # 1. PINCH ZOOM
-            recent_points = np.array(list(self.history)[-5:])
-            thumb_tip = np.array(landmarks[4][:2])
-            thumb_tip_expanded = thumb_tip[None, :]
-            pinch_dists = np.linalg.norm(recent_points - thumb_tip_expanded, axis=1)
-            avg_pinch_dist = np.mean(pinch_dists)
-            if avg_pinch_dist < self.pinch_start_threshold and abs(dy) > 0.04:
-                if current_time - self.last_zoom_time > self.zoom_cooldown:
-                    self.last_zoom_time = current_time
-                    direction = "IN" if dy > 0 else "OUT"
-                    print(f"Pinch+Move: ZOOM {direction}")
-                    self._trigger_action()
-                    return f"ZOOM {direction}"
+                if dx > 0:
+                    print("NEXT SLICE")
+                    return "SWIPE RIGHT"
+                else:
+                    print("PREV SLICE")
+                    return "SWIPE LEFT"
 
-            # 2. SWIPE (proven working - keep strict)
-            horiz_ratio = abs(dx) / (abs(dy) + 1e-6)
-            if (horiz_ratio > 6.0 and          # Even stricter horizontal bias
-                dist > self.min_swipe_dist and
-                abs(dx) > self.min_dx_swipe):
-                self._trigger_action()
-                dir_str = "RIGHT" if dx > 0 else "LEFT"
-                print(f"✅ SWIPE {dir_str} (ratio:{horiz_ratio:.1f}x)")
-                return f"SWIPE {dir_str}"
+            if abs(dy) > self.vertical_threshold and abs(dy) > abs(dx):
 
-            # 3. BRIGHTNESS (MUCH stricter - only PURE vertical)
-            vert_ratio = abs(dy) / (abs(dx) + 1e-6)
-            if (vert_ratio > self.min_vert_bias and     # 8x vertical bias
-                abs(dy) > self.brightness_threshold and # Much higher threshold
-                dist > 0.12):                            # Needs sustained movement
-                print(f"📈 BRIGHTNESS dy={dy:.3f} (ratio:{vert_ratio:.1f}x)")
+                self.state = "IDLE"
+                self.history.clear()
+
+                print("BRIGHTNESS CONTROL")
                 return ("BRIGHTNESS", dy)
 
-        return None
+        # -------------------------
+        # PINCH ZOOM
+        # -------------------------
 
-    def _trigger_action(self):
-        self.state = "COOLDOWN"
-        self.last_action_time = time.time()
-        print("🔥 ACTION TRIGGERED (1s cooldown)")
+        if self.state == "ARMED":
+
+            if self.last_pinch_dist is None:
+                self.last_pinch_dist = pinch_dist
+                return None
+
+            change = pinch_dist - self.last_pinch_dist
+            self.last_pinch_dist = pinch_dist
+
+            PINCH_THRESHOLD = 0.015
+
+            if abs(change) > PINCH_THRESHOLD:
+
+                self.state = "IDLE"
+                self.history.clear()
+
+                if change > 0:
+                    print("ZOOM IN")
+                    return "ZOOM IN"
+                else:
+                    print("ZOOM OUT")
+                    return "ZOOM OUT"
+
+        return None

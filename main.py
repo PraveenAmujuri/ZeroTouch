@@ -7,6 +7,7 @@ def main():
     camera = ZeroTouchCamera()
     engine = GestureEngine()
     viewer = DICOMViewer()
+    last_gesture = "NONE"
 
     # Sensitivity for brightness only
     # Increasing this makes the brightness change faster with vertical hand movement
@@ -18,6 +19,8 @@ def main():
             break
 
         gesture = engine.update(landmarks)
+        if gesture:
+            last_gesture = gesture
 
         if gesture:
             if gesture == "SWIPE RIGHT":
@@ -53,15 +56,53 @@ def main():
             status_color,
             2
         )
-        
+        cv2.putText(
+        cam_resized,
+        f"GESTURE: {last_gesture}",
+        (20, 80),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (255, 255, 0),
+        2
+        )
         # Displaying current Brightness (Window Center) for feedback
         cv2.putText(
             dicom_color,
-            f"BRIGHTNESS (C): {int(viewer.window_center)}",
-            (20, 580),
+            f"Slice: {viewer.slice_index+1}/{viewer.total_slices}",
+            (20, 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
-            (0, 255, 255),
+            (0,255,255),
+            2
+        )
+
+        cv2.putText(
+            dicom_color,
+            f"Zoom: {viewer.zoom_scale:.2f}x",
+            (20, 80),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0,255,255),
+            2
+        )
+
+        cv2.putText(
+            dicom_color,
+            f"Brightness: {int(viewer.window_center)}",
+            (20, 120),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0,255,255),
+            2
+        )
+
+        cv2.putText(
+            dicom_color,
+            f"Gesture: {last_gesture}",
+            (20, 160),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0,255,255),
             2
         )
 
