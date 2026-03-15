@@ -49,6 +49,8 @@ Temporal filtering to reduce accidental triggers
 Uses CLAHE (Contrast Limited Adaptive Histogram Equalization) to improve
 detection under varying lighting conditions.
 
+![screenshot](image_2026-03-15_111110649.png)
+
 ------------------------------------------------------------------------
 
 ## Tech Stack
