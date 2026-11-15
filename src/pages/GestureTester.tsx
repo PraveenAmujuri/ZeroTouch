@@ -208,9 +208,9 @@ export const GestureTester: React.FC = () => {
           <div>
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                Phase 2 Prototype
+                Live Engine
               </span>
-              <span className="text-xs text-white/50 font-mono">Bockhacker et al. Two-Hand Engine</span>
+              <span className="text-xs text-white/50 font-mono">Two-Hand Gesture System</span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight mt-1 font-pratico">
               0Touch Browser Gesture Testbed
@@ -225,7 +225,7 @@ export const GestureTester: React.FC = () => {
               <button
                 onClick={startCamera}
                 disabled={isInitializing}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold transition-all shadow-lg shadow-orange-500/20"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#ffa694] hover:bg-white text-[#27272a] font-bold uppercase tracking-wider text-xs transition-all border-2 border-[#27272a] shadow-[3px_3px_#27272a] disabled:opacity-50"
               >
                 <Play className="w-4 h-4 fill-current" />
                 Start Camera
@@ -233,7 +233,7 @@ export const GestureTester: React.FC = () => {
             ) : (
               <button
                 onClick={stopCamera}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-all shadow-lg shadow-red-600/20"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#6f7bd4] text-white font-bold uppercase tracking-wider text-xs transition-all border-2 border-[#27272a] shadow-[3px_3px_#27272a]"
               >
                 <Square className="w-4 h-4 fill-current" />
                 Stop Camera
@@ -344,9 +344,9 @@ export const GestureTester: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Mode Manual Overrides */}
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs font-mono text-white/60 uppercase tracking-wider">
+            {/* Quick Mode Manual Overrides (Exact dark grey style with orange-white on select) */}
+            <div className="p-4 bg-[#18181b] border-2 border-[#27272a] shadow-[4px_4px_#09090b] flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
                 Select Active Mode:
               </span>
               <div className="flex flex-wrap gap-2">
@@ -359,10 +359,10 @@ export const GestureTester: React.FC = () => {
                   <button
                     key={item.mode}
                     onClick={() => controllerRef.current?.setMode(item.mode)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    className={`px-3.5 py-2 text-xs font-bold uppercase border-2 transition-all ${
                       debugInfo?.mode === item.mode
-                        ? 'bg-orange-500 text-white shadow-md'
-                        : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10'
+                        ? 'bg-[#FF8066] text-black border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                        : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                     }`}
                   >
                     {item.label}

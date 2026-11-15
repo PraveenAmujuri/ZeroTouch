@@ -25,7 +25,7 @@ export const Features: React.FC = () => {
         {
           title: 'ENTER MODE: 1 + 1 POSES',
           sub: 'Show matching 1 index finger on both hands simultaneously to engage Slice Navigation.',
-          badge: 'ACTIVATION POSE',
+          badge: 'MODE ENGAGEMENT',
           svgUrl: '/guestures/slice-navigation.svg',
         },
         {
@@ -51,7 +51,7 @@ export const Features: React.FC = () => {
         {
           title: 'ENTER MODE: 2 + 2 POSES',
           sub: 'Show matching 2 fingers on both hands to lock Continuous Zoom mode.',
-          badge: 'ACTIVATION POSE',
+          badge: 'MODE ENGAGEMENT',
           svgUrl: '/guestures/zoom.svg',
         },
         {
@@ -77,7 +77,7 @@ export const Features: React.FC = () => {
         {
           title: 'ENTER MODE: 3 + 3 POSES',
           sub: 'Show matching 3 fingers on both hands to select Windowing Preset mode.',
-          badge: 'ACTIVATION POSE',
+          badge: 'MODE ENGAGEMENT',
           svgUrl: '/guestures/windowing.svg',
         },
         {
@@ -492,7 +492,15 @@ export const Features: React.FC = () => {
               </div>
 
               <p className="text-[11px] text-zinc-500 mt-6">
-                © {new Date().getFullYear()} 0Touch Medical Systems. All rights reserved.
+                © 2026 0Touch. All rights reserved.{' '}
+                <a
+                  href="https://praveenai.tech/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#ff8066] hover:underline"
+                >
+                  praveenai.tech
+                </a>
               </p>
             </div>
           </footer>

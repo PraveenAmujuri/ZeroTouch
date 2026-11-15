@@ -1,9 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+
+type HeaderState = 'normal' | 'hidden' | 'reveal';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerState, setHeaderState] = useState<HeaderState>('normal');
+  const lastScrollY = useRef(0);
+  const headerHeight = useRef(100);
+  const navContainerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  useEffect(() => {
+    if (navContainerRef.current) {
+      headerHeight.current = navContainerRef.current.offsetHeight || 100;
+    }
+
+    const handleScroll = () => {
+      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+      const hHeight = headerHeight.current;
+
+      // 1. At the top of the website (scroll position within initial header height):
+      // Natural normal scroll along with document flow (no sticky jump)
+      if (currentScrollY <= hHeight) {
+        setHeaderState('normal');
+      }
+      // 2. Scrolled past header and scrolling down:
+      // Hide the header (sticks offscreen above viewport)
+      else if (currentScrollY > lastScrollY.current && currentScrollY > hHeight) {
+        setHeaderState('hidden');
+      }
+      // 3. Scrolled past header and scrolling up:
+      // Immediately reveal header smoothly downward
+      else if (currentScrollY < lastScrollY.current && currentScrollY > hHeight) {
+        setHeaderState('reveal');
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navLinks = [
     { name: 'HOME', path: '/' },
@@ -12,8 +50,24 @@ export const Navbar: React.FC = () => {
     { name: 'CONTACT', path: '/contact' },
   ];
 
+  // Smooth slide up on scroll down, smooth slide down on scroll up
+  const getHeaderClasses = () => {
+    switch (headerState) {
+      case 'reveal':
+        return 'sticky top-0 z-50 translate-y-0 transition-transform duration-300 ease-out shadow-[0_4px_12px_rgba(0,0,0,0.1)]';
+      case 'hidden':
+        return 'sticky top-0 z-50 -translate-y-full transition-transform duration-300 ease-in';
+      case 'normal':
+      default:
+        return 'relative z-50 translate-y-0 transition-transform duration-300 ease-out';
+    }
+  };
+
   return (
-    <div className="header-wrapper color-background-1 header-wrapper--border-bottom w-full bg-[#f3f4fb] border-t-4 border-b-4 border-[#27272a] sticky top-0 z-50">
+    <div
+      ref={navContainerRef}
+      className={`header-wrapper color-background-1 header-wrapper--border-bottom w-full bg-[#f3f4fb] border-t-4 border-b-4 border-[#27272a] ${getHeaderClasses()}`}
+    >
       <header className="header flex items-stretch justify-between w-full h-[100px] max-h-[100px] relative">
         
         {/* Mobile Kebab Menu button (hidden on desktop >=991px) */}

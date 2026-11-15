@@ -58,7 +58,7 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Sterile touchless DICOM viewer interface engineered for operating rooms and surgical suites. Based on Bockhacker et al. (2020).
+              Sterile touchless DICOM viewer interface engineered for operating rooms and surgical suites.
             </p>
             <div className="flex items-center gap-2 text-xs text-zinc-400">
               <ShieldCheck className="w-4 h-4 text-tertiary-400" />
@@ -96,7 +96,17 @@ export const Footer: React.FC = () => {
             <Link to="/contact" className="text-sm text-zinc-400 hover:text-white transition-colors">Clinical Demonstration</Link>
             <span className="text-sm text-zinc-400">Email: or-support@zerotouch.io</span>
             <span className="text-sm text-zinc-400">Location: Surgical Engineering Labs</span>
-            <span className="text-xs text-zinc-500 mt-2">© 2026 ZeroTouch Medical Imaging. All rights reserved.</span>
+            <span className="text-xs text-zinc-500 mt-2">
+              © 2026 0Touch. All rights reserved.{' '}
+              <a
+                href="https://praveenai.tech/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#ff8066] hover:underline"
+              >
+                praveenai.tech
+              </a>
+            </span>
           </div>
 
         </div>

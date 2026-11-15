@@ -29,7 +29,7 @@ export const Docs: React.FC = () => {
             "Evaluating Usability of a Touchless Image Viewer in the Operating Room" (2020)
           </h2>
           <p className="text-sm text-zinc-600 leading-relaxed">
-            Authored by Bockhacker et al., published in <em>International Journal of Computer Assisted Radiology and Surgery (IJCARS)</em>. Evaluated 5 fundamental two-hand interaction combinations in sterile surgical environments.
+            Published in <em>International Journal of Computer Assisted Radiology and Surgery (IJCARS)</em>. Evaluated 5 fundamental two-hand interaction combinations in sterile surgical environments.
           </p>
           <a
             href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6989265/"
@@ -79,9 +79,9 @@ export const Docs: React.FC = () => {
             <FileText className="w-4 h-4" />
             <span>Python Gesture Engine Standalone Execution</span>
           </div>
-          <h3 className="font-display font-bold text-xl">Running the Computer Vision Prototype</h3>
+          <h3 className="font-display font-bold text-xl">Running the Desktop Application</h3>
           <p className="text-sm text-zinc-300 leading-relaxed">
-            The core computer vision engine is written in Python using OpenCV and MediaPipe Hands:
+            The core computer vision engine can also run natively on desktop using Python, OpenCV, and MediaPipe Hands:
           </p>
           <pre className="bg-black/60 border border-zinc-800 p-4 rounded text-xs font-mono text-emerald-400 overflow-x-auto">
 {`# 1. Activate environment

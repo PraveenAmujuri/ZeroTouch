@@ -147,17 +147,27 @@ export const Home: React.FC = () => {
           <div className="relative overflow-hidden banner__media md:border-l-4 border-[#27272a] media w-full md:w-[60%] flex-1 h-full min-h-[380px] flex items-center justify-center bg-[#6f7bd4]">
             {/* Video animation */}
             <video
-              className="absolute top-0 left-0 w-full h-full object-cover"
+              className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none select-none"
               autoPlay
               loop
               muted
               playsInline
+              controls={false}
+              controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
+              disablePictureInPicture
+              disableRemotePlayback
               poster="/loz_hero_animation_no_leaves.webp"
             >
               <source src="/hero_video.webm" type="video/webm" />
               <source src="/hero_video.mp4" type="video/mp4" />
               <img src="/loz_hero_animation_no_leaves.webp" width="1920" height="1080" alt="0Touch Medical Scan Visualization" />
             </video>
+            {/* Solid transparent overlay completely intercepting hover and mouse events */}
+            <div
+              className="absolute inset-0 z-30 pointer-events-auto select-none bg-black/[0.001]"
+              onContextMenu={(e) => e.preventDefault()}
+              aria-hidden="true"
+            />
           </div>
 
         </div>
@@ -262,17 +272,6 @@ export const Home: React.FC = () => {
                   >
                     0Touch Gesture Engine
                   </h2>
-
-                  <div className="w-fit flex justify-center items-center flex-col gap-y-1">
-                    <div className="flex justify-center items-center flex-col relative">
-                      <div className="w-10 h-12 bg-[#ff8066] border-2 border-[#27272a] flex items-center justify-center font-black text-white text-sm">
-                        v2.0
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-[#ff8066] uppercase font-extrabold tracking-wider">
-                      ACTIVE
-                    </span>
-                  </div>
                 </div>
 
                 {/* Step 1: Modality Selection */}
@@ -603,7 +602,15 @@ export const Home: React.FC = () => {
             </div>
 
             <p className="text-xs text-zinc-500 mt-2">
-              © 2026 0Touch. All rights reserved.
+              © 2026 0Touch. All rights reserved.{' '}
+              <a
+                href="https://praveenai.tech/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#ff8066] hover:underline"
+              >
+                praveenai.tech
+              </a>
             </p>
           </div>
         </div>

@@ -19,7 +19,11 @@ import {
   Maximize,
   Minimize,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward
 } from 'lucide-react';
 import { parseDICOMBuffer, DICOMStudyMeta } from '../utils/dicomLoader';
 import { extractDicomFilesFromZip } from '../utils/zipLoader';
@@ -69,6 +73,12 @@ export const Viewer: React.FC = () => {
   // Recent Studies Cache
   const [recentStudies, setRecentStudies] = useState<Omit<CachedDICOMStudy, 'buffer'>[]>([]);
   const [showRecentDrawer, setShowRecentDrawer] = useState<boolean>(false);
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+
+  // Cine Playback state
+  const [isPlayingCine, setIsPlayingCine] = useState<boolean>(false);
+  const [cineFps, setCineFps] = useState<number>(15);
+  const cineIntervalRef = useRef<number | null>(null);
 
   // Gesture Engine state
   const [isGestureEnabled, setIsGestureEnabled] = useState<boolean>(false);
@@ -122,6 +132,26 @@ export const Viewer: React.FC = () => {
   useEffect(() => {
     getRecentStudies().then((list) => setRecentStudies(list));
   }, []);
+
+  // Cine Playback loop
+  useEffect(() => {
+    if (isPlayingCine && studyMeta && studyMeta.numberOfFrames > 1) {
+      const intervalMs = Math.round(1000 / cineFps);
+      cineIntervalRef.current = window.setInterval(() => {
+        setCurrentSlice((prev) => (prev + 1) % studyMeta.numberOfFrames);
+      }, intervalMs);
+    } else {
+      if (cineIntervalRef.current) {
+        clearInterval(cineIntervalRef.current);
+        cineIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (cineIntervalRef.current) {
+        clearInterval(cineIntervalRef.current);
+      }
+    };
+  }, [isPlayingCine, cineFps, studyMeta]);
 
   // 1. Render Active Frame to Canvas
   const renderCurrentFrame = useCallback(() => {
@@ -498,7 +528,7 @@ export const Viewer: React.FC = () => {
             await webcamVideoRef.current.play();
             gestureControllerRef.current.start(webcamVideoRef.current);
             setIsCameraReady(true);
-            setStatusMessage('Gesture Engine ACTIVE • Ready for chest-level gestures');
+            setStatusMessage('Gesture Engine Ready • Chest-level gestures');
           }
         }, 100);
       } catch (err: any) {
@@ -522,12 +552,41 @@ export const Viewer: React.FC = () => {
     }
   };
 
-  // Keyboard Navigation Fallback
+  // Prevent browser-level pinch-to-zoom on viewer (trackpad 2-finger zoom)
+  useEffect(() => {
+    const preventBrowserZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        // Route trackpad pinch directly to DICOM zoom instead of browser page zoom
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        setZoomLevel((prev) => Math.max(0.4, Math.min(6.0, prev + delta)));
+      }
+    };
+
+    const container = viewerContainerRef.current;
+    if (container) {
+      container.addEventListener('wheel', preventBrowserZoom, { passive: false });
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', preventBrowserZoom);
+      }
+    };
+  }, []);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      // Ignore if focus is in an input or textarea
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsPlayingCine((prev) => !prev);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        setIsPlayingCine(false);
         setCurrentSlice((prev) => Math.max(0, prev - 1));
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        setIsPlayingCine(false);
         if (studyMeta) {
           setCurrentSlice((prev) => Math.min(studyMeta.frames.length - 1, prev + 1));
         }
@@ -540,6 +599,27 @@ export const Viewer: React.FC = () => {
         setPanPos({ x: 0, y: 0 });
       } else if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
+      } else if (e.key === 'i' || e.key === 'I') {
+        setIsInverted((prev) => !prev);
+      } else if (e.key === '1') {
+        setActiveGestureMode(OperationMode.SLICE_NAV);
+        gestureControllerRef.current?.setMode(OperationMode.SLICE_NAV);
+      } else if (e.key === '2') {
+        setActiveGestureMode(OperationMode.ZOOM);
+        gestureControllerRef.current?.setMode(OperationMode.ZOOM);
+      } else if (e.key === '3') {
+        setActiveGestureMode(OperationMode.WINDOWING);
+        gestureControllerRef.current?.setMode(OperationMode.WINDOWING);
+      } else if (e.key === '4') {
+        setActiveGestureMode(OperationMode.PANNING);
+        gestureControllerRef.current?.setMode(OperationMode.PANNING);
+      } else if (e.key === 'g' || e.key === 'G') {
+        toggleGestureControl();
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        setShowHelpModal((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setShowHelpModal(false);
+        setShowRecentDrawer(false);
       }
     };
 
@@ -565,17 +645,25 @@ export const Viewer: React.FC = () => {
     isMouseDownRef.current = false;
   };
 
-  // Mouse wheel fallback for zoom
+  // Mouse wheel: Navigate slices/frames by default (trackpad pinch with ctrlKey is captured by passive:false listener above)
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.08 : -0.08;
-    setZoomLevel((prev) => Math.max(0.4, Math.min(6.0, prev + delta)));
+    if (e.ctrlKey || e.metaKey) return;
+    // Slide scroll: Navigate slices
+    if (studyMeta && studyMeta.numberOfFrames > 1) {
+      if (e.deltaY > 0) {
+        // Scroll down -> Next slice
+        setCurrentSlice((prev) => Math.min(studyMeta.numberOfFrames - 1, prev + 1));
+      } else if (e.deltaY < 0) {
+        // Scroll up -> Previous slice
+        setCurrentSlice((prev) => Math.max(0, prev - 1));
+      }
+    }
   };
 
   return (
     <div
       ref={viewerContainerRef}
-      className="min-h-screen bg-[#111114] text-[#ececed] flex flex-col font-sans select-none overflow-hidden"
+      className="h-screen max-h-screen bg-[#111114] text-[#ececed] flex flex-col font-sans select-none overflow-hidden"
     >
       {/* 1. TOP MEDICAL APP HEADER BAR */}
       <header className="h-16 bg-[#18181d] border-b border-[#27272a] px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
@@ -616,8 +704,8 @@ export const Viewer: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Gesture Mode Buttons (Pill-shaped with Loz Primary styling for active) */}
-        <div className="hidden lg:flex items-center gap-2 font-mono text-xs">
+        {/* Center: Gesture Mode Buttons (Sharp rectangular Loz card style with 3D drop shadow) */}
+        <div className="hidden lg:flex items-center gap-3 font-mono text-xs">
           {[
             { id: OperationMode.SLICE_NAV, label: '1+1: SLICE', icon: <Layers className="w-3.5 h-3.5" /> },
             { id: OperationMode.ZOOM, label: '2+2: ZOOM', icon: <ZoomIn className="w-3.5 h-3.5" /> },
@@ -631,10 +719,10 @@ export const Viewer: React.FC = () => {
                 gestureControllerRef.current?.setMode(m.id);
               }}
               title={`Switch to ${m.id} Mode`}
-              className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-all border ${
+              className={`px-3.5 py-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-all border-2 ${
                 activeGestureMode === m.id
-                  ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] shadow-sm font-bold scale-[1.02]'
-                  : 'bg-[#22222a] border-[#27272a] text-[#9999a3] hover:bg-[#2b2b36] hover:text-white'
+                  ? 'bg-[#FF8066] text-black border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                  : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
               }`}
             >
               {m.icon}
@@ -649,15 +737,15 @@ export const Viewer: React.FC = () => {
           <button
             onClick={() => setShowRecentDrawer((prev) => !prev)}
             title="Browse Recently Opened DICOM Studies"
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 border-2 transition-all ${
               showRecentDrawer
-                ? 'bg-[#FF8066] border-[#27272a] text-[#27272a] font-bold'
-                : 'bg-[#22222a] border-[#27272a] text-[#9999a3] hover:text-white hover:bg-[#2b2b36]'
+                ? 'bg-[#FF8066] text-black border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
             }`}
           >
             <History className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Recent</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#18181d] text-white/70">
+            <span className="text-[10px] px-1.5 py-0.2 bg-black text-white font-mono">
               {recentStudies.length}
             </span>
           </button>
@@ -666,29 +754,33 @@ export const Viewer: React.FC = () => {
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen (F)' : 'Enter Fullscreen (F)'}
-            className="p-2 rounded-full border border-[#27272a] bg-[#22222a] hover:bg-[#2b2b36] text-[#9999a3] hover:text-white transition-colors"
+            className={`p-1.5 border-2 transition-all ${
+              isFullscreen
+                ? 'bg-[#FF8066] text-black border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
+            }`}
           >
-            {isFullscreen ? <Minimize className="w-4 h-4 text-[#FF8066]" /> : <Maximize className="w-4 h-4" />}
+            {isFullscreen ? <Minimize className="w-4 h-4 text-black" /> : <Maximize className="w-4 h-4" />}
           </button>
 
           {/* Testbed Link */}
           <Link
             to="/gestures-test"
             title="Open Standalone Gesture Engine Testbed"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-[#FF8066] hover:text-white px-3 py-1.5 rounded-full bg-[#FF8066]/10 border border-[#FF8066]/30 transition-colors"
+            className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 border-2 border-[#3f3f46] bg-[#27272a] text-zinc-300 hover:bg-[#3f3f46] hover:text-white transition-all"
           >
-            <Activity className="w-3.5 h-3.5" />
+            <Activity className="w-3.5 h-3.5 text-[#FF8066]" />
             <span>Testbed</span>
           </Link>
 
-          {/* Enable Gestures Button */}
+          {/* Enable Gestures Button (Loz Pill primary CTA) */}
           <button
             onClick={toggleGestureControl}
             title="Toggle Two-Hand Webcam Tracking"
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all border ${
+            className={`flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all border-2 border-[#27272a] rounded-full ${
               isGestureEnabled
-                ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] font-bold shadow-md shadow-[#FF8066]/20'
-                : 'bg-[#ffffff] hover:bg-[#27272a] text-[#27272a] hover:text-white border-[#27272a]'
+                ? 'bg-[#6f7bd4] text-white shadow-[3px_3px_#27272a]'
+                : 'bg-[#ffa694] hover:bg-[#ffb5a6] text-[#27272a] shadow-[3px_3px_#27272a]'
             }`}
           >
             {isGestureEnabled ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
@@ -743,52 +835,61 @@ export const Viewer: React.FC = () => {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Left Collapsible Sidebar: Controls, Samples & Archive Support */}
         {!isSidebarCollapsed && (
-          <aside className="w-full md:w-64 bg-[#141418] border-r border-[#27272a] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all">
+          <aside className="w-full md:w-64 max-h-full bg-[#141418] border-r border-[#27272a] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all custom-scrollbar">
             {/* Sample Studies Selector */}
             <div className="space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
                 Sample DICOM Studies
               </span>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <button
                   onClick={() => loadDicomFromUrl('/0003.dcm', '0003.dcm')}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                  className={`w-full text-left p-3 border-2 text-xs font-mono transition-all flex items-center justify-between ${
                     currentFile.includes('0003')
-                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
-                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
+                      ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                      : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                   }`}
                 >
-                  <span>0003.DCM (Angio 17f)</span>
-                  <span className="text-[10px] opacity-60">XA</span>
+                  <div>
+                    <span className="block font-bold text-sm uppercase">Angiography</span>
+                    <span className="text-[11px] opacity-80">17ct Cine (0003.DCM)</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 border border-current">XA</span>
                 </button>
 
                 <button
                   onClick={() => loadDicomFromUrl('/0020.DCM', '0020.DCM')}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                  className={`w-full text-left p-3 border-2 text-xs font-mono transition-all flex items-center justify-between ${
                     currentFile.includes('0020')
-                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
-                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
+                      ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                      : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                   }`}
                 >
-                  <span>0020.DCM (Echo Cine)</span>
-                  <span className="text-[10px] opacity-60">US</span>
+                  <div>
+                    <span className="block font-bold text-sm uppercase">Ultrasound</span>
+                    <span className="text-[11px] opacity-80">11ct Slices (0020.DCM)</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 border border-current">US</span>
                 </button>
 
                 <button
                   onClick={() => loadDicomFromUrl('/MRBRAIN.DCM', 'MRBRAIN.DCM')}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                  className={`w-full text-left p-3 border-2 text-xs font-mono transition-all flex items-center justify-between ${
                     currentFile.includes('MRBRAIN')
-                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
-                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
+                      ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                      : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                   }`}
                 >
-                  <span>MRBRAIN.DCM</span>
-                  <span className="text-[10px] opacity-60">MR</span>
+                  <div>
+                    <span className="block font-bold text-sm uppercase">Brain MRI</span>
+                    <span className="text-[11px] opacity-80">3D Axial Series</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 border border-current">MR</span>
                 </button>
               </div>
             </div>
 
-            {/* Upload Dropzone (Supports .DCM, Series, and .ZIP) */}
+            {/* Upload Dropzone */}
             <div className="space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
                 Load DICOM / ZIP Archive
@@ -805,18 +906,18 @@ export const Viewer: React.FC = () => {
                   handleFileUpload(e.dataTransfer.files);
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`p-4 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${
+                className={`p-4 border-2 text-center cursor-pointer transition-all ${
                   isDraggingFile
-                    ? 'border-[#FF8066] bg-[#FF8066]/10'
-                    : 'border-[#27272a] bg-[#1a1a20] hover:border-[#FF8066]/60 hover:bg-[#1e1e26]'
+                    ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                    : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2 mb-1.5">
-                  <Upload className="w-4 h-4 text-[#FF8066]" />
-                  <Archive className="w-4 h-4 text-[#888894]" />
+                  <Upload className="w-4 h-4 text-current" />
+                  <Archive className="w-4 h-4 text-current" />
                 </div>
-                <p className="text-xs text-white/90 font-semibold">Drop .DCM, Series or .ZIP</p>
-                <p className="text-[10px] text-[#888894] mt-0.5">Instant browser extraction</p>
+                <p className="text-xs font-bold uppercase">Drop .DCM, Series or .ZIP</p>
+                <p className="text-[10px] opacity-75 font-medium mt-0.5">Instant browser extraction</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -833,7 +934,7 @@ export const Viewer: React.FC = () => {
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
                 Viewing Presets
               </span>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {PRESET_LIST.map((preset, idx) => (
                   <button
                     key={preset}
@@ -843,10 +944,10 @@ export const Viewer: React.FC = () => {
                       setWindowCenter(p.wc);
                       setWindowWidth(p.ww);
                     }}
-                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-mono transition-all text-left border ${
+                    className={`px-2.5 py-2 text-[10px] font-mono font-bold uppercase transition-all text-left border-2 ${
                       activePresetIndex === idx
-                        ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] font-bold shadow-sm'
-                        : 'bg-[#1e1e24] text-[#a1a1aa] border-[#27272a] hover:bg-[#282832] hover:text-white'
+                        ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                        : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                     }`}
                   >
                     {preset.replace(' (CT)', '')}
@@ -856,10 +957,10 @@ export const Viewer: React.FC = () => {
 
               <button
                 onClick={() => setIsInverted((prev) => !prev)}
-                className={`w-full mt-2 px-3 py-1.5 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 border transition-all ${
+                className={`w-full mt-2 p-2 text-xs font-mono font-bold uppercase flex items-center justify-center gap-2 border-2 transition-all ${
                   isInverted
-                    ? 'bg-[#FF8066]/20 border-[#FF8066] text-[#FF8066] font-bold'
-                    : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:text-white'
+                    ? 'bg-[#6f7bd4] text-white border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                    : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
@@ -869,43 +970,43 @@ export const Viewer: React.FC = () => {
 
             {/* Detailed Image Specs Card */}
             {studyMeta && (
-              <div className="p-3 rounded-xl bg-[#18181f] border border-[#27272a] space-y-1.5 text-[11px] font-mono text-[#888894]">
-                <span className="text-[10px] uppercase font-bold text-white/80 block border-b border-[#27272a] pb-1">
+              <div className="p-3 border-2 border-[#3f3f46] bg-[#27272a] text-zinc-200 space-y-1.5 text-[11px] font-mono">
+                <span className="text-[10px] uppercase font-bold text-[#6f7bd4] block border-b border-[#3f3f46] pb-1">
                   DICOM Information
                 </span>
                 <div className="flex justify-between">
-                  <span>Resolution:</span>
-                  <span className="text-white">{studyMeta.columns} × {studyMeta.rows}</span>
+                  <span className="text-zinc-400">Resolution:</span>
+                  <span className="font-bold text-white">{studyMeta.columns} × {studyMeta.rows}</span>
                 </div>
                 {studyMeta.sliceThickness && (
                   <div className="flex justify-between">
-                    <span>Thickness:</span>
-                    <span className="text-white">{studyMeta.sliceThickness} mm</span>
+                    <span className="text-zinc-400">Thickness:</span>
+                    <span className="font-bold text-white">{studyMeta.sliceThickness} mm</span>
                   </div>
                 )}
                 {studyMeta.kvp && (
                   <div className="flex justify-between">
-                    <span>Voltage:</span>
-                    <span className="text-white">{studyMeta.kvp} kVp</span>
+                    <span className="text-zinc-400">Voltage:</span>
+                    <span className="font-bold text-white">{studyMeta.kvp} kVp</span>
                   </div>
                 )}
                 {studyMeta.institutionName && (
                   <div className="truncate">
-                    <span className="text-[#6c6c75]">Site: </span>
-                    <span className="text-white">{studyMeta.institutionName}</span>
+                    <span className="text-zinc-400">Site: </span>
+                    <span className="font-bold text-white">{studyMeta.institutionName}</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Reset Viewport */}
+            {/* Reset Viewport (Loz button pill style) */}
             <button
               onClick={() => {
                 setZoomLevel(1.0);
                 setPanPos({ x: 0, y: 0 });
               }}
               title="Reset Viewport Scale and Position (R)"
-              className="w-full px-3 py-2 rounded-full border border-[#27272a] bg-[#1e1e24] hover:bg-[#ffffff] text-[#a1a1aa] hover:text-[#27272a] text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-auto"
+              className="w-full py-2.5 rounded-full border-2 border-[#27272a] bg-[#ffa694] hover:bg-[#ffb5a6] text-[#27272a] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[3px_3px_#27272a] mt-auto"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Viewport</span>
@@ -1013,21 +1114,72 @@ export const Viewer: React.FC = () => {
             </>
           )}
 
-          {/* Slice Timeline Navigation Slider (Bottom) */}
+          {/* Slice Timeline Navigation & Cine Controls (Bottom) */}
           {studyMeta && studyMeta.numberOfFrames > 1 && (
-            <div className="absolute bottom-4 left-8 right-8 bg-[#18181d]/85 backdrop-blur-md px-4 py-2 rounded-full border border-[#27272a] flex items-center gap-4 z-10 shadow-lg">
-              <span className="text-xs font-mono text-[#888894] shrink-0">Frame:</span>
+            <div className="absolute bottom-4 left-6 right-6 max-w-4xl mx-auto bg-[#18181d]/90 backdrop-blur-md px-4 py-2 rounded-full border border-[#27272a] flex items-center gap-3 z-10 shadow-2xl">
+              {/* Cine Play/Pause Toggle */}
+              <button
+                onClick={() => setIsPlayingCine((prev) => !prev)}
+                title={isPlayingCine ? 'Pause Cine (Space)' : 'Play Cine Loop (Space)'}
+                className="p-1.5 rounded-full bg-[#FF8066] text-black hover:bg-[#ff9680] transition-transform active:scale-95 shadow-[1.5px_1.5px_0px_#ffffff]"
+              >
+                {isPlayingCine ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-black ml-0.5" />}
+              </button>
+
+              {/* Step Previous */}
+              <button
+                onClick={() => {
+                  setIsPlayingCine(false);
+                  setCurrentSlice((prev) => (prev > 0 ? prev - 1 : studyMeta.numberOfFrames - 1));
+                }}
+                title="Previous Frame (Left Arrow)"
+                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <SkipBack className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Step Next */}
+              <button
+                onClick={() => {
+                  setIsPlayingCine(false);
+                  setCurrentSlice((prev) => (prev < studyMeta.numberOfFrames - 1 ? prev + 1 : 0));
+                }}
+                title="Next Frame (Right Arrow)"
+                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+              </button>
+
+              <span className="text-xs font-mono text-zinc-400 shrink-0">Frame:</span>
               <input
                 type="range"
                 min={0}
                 max={studyMeta.numberOfFrames - 1}
                 value={currentSlice}
-                onChange={(e) => setCurrentSlice(parseInt(e.target.value, 10))}
-                className="flex-1 accent-[#FF8066] cursor-pointer"
+                onChange={(e) => {
+                  setIsPlayingCine(false);
+                  setCurrentSlice(parseInt(e.target.value, 10));
+                }}
+                className="flex-1 accent-[#FF8066] cursor-pointer h-1.5 bg-zinc-700 rounded-lg"
               />
               <span className="text-xs font-mono font-bold text-[#FF8066] shrink-0">
                 {currentSlice + 1} / {studyMeta.numberOfFrames}
               </span>
+
+              {/* Cine Speed Selector */}
+              <div className="hidden sm:flex items-center gap-1 border-l border-zinc-700 pl-3">
+                {[10, 15, 24, 30].map((fps) => (
+                  <button
+                    key={fps}
+                    onClick={() => setCineFps(fps)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                      cineFps === fps ? 'bg-[#6f7bd4] text-white font-bold' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {fps}fps
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </main>
