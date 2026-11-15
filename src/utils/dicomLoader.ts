@@ -27,9 +27,18 @@ export interface DecodedDICOMFrame {
 export interface DICOMStudyMeta {
   patientName: string;
   patientId: string;
+  patientBirthDate?: string;
+  patientSex?: string;
   modality: string;
   studyDate: string;
+  studyTime?: string;
   seriesDescription: string;
+  studyDescription?: string;
+  institutionName?: string;
+  manufacturer?: string;
+  kvp?: string;
+  sliceThickness?: string;
+  pixelSpacing?: string;
   instanceNumber: number;
   rows: number;
   columns: number;
@@ -43,9 +52,18 @@ export function parseDICOMBuffer(arrayBuffer: ArrayBuffer, fileName: string): DI
 
   const patientName = dataSet.string('x00100010') || 'ANONYMOUS';
   const patientId = dataSet.string('x00100020') || 'N/A';
+  const patientBirthDate = dataSet.string('x00100030');
+  const patientSex = dataSet.string('x00100040');
   const modality = dataSet.string('x00080060') || 'OT';
   const studyDate = dataSet.string('x00080020') || 'N/A';
+  const studyTime = dataSet.string('x00080030');
   const seriesDescription = dataSet.string('x0008103e') || fileName;
+  const studyDescription = dataSet.string('x00081030');
+  const institutionName = dataSet.string('x00080080');
+  const manufacturer = dataSet.string('x00080070');
+  const kvp = dataSet.string('x00180060');
+  const sliceThickness = dataSet.string('x00180050');
+  const pixelSpacing = dataSet.string('x00280030');
   const instanceNumber = dataSet.intString('x00200013') || 1;
 
   const rows = dataSet.uint16('x00280010') || 512;
@@ -229,9 +247,18 @@ export function parseDICOMBuffer(arrayBuffer: ArrayBuffer, fileName: string): DI
   return {
     patientName,
     patientId,
+    patientBirthDate,
+    patientSex,
     modality,
     studyDate,
+    studyTime,
     seriesDescription,
+    studyDescription,
+    institutionName,
+    manufacturer,
+    kvp,
+    sliceThickness,
+    pixelSpacing,
     instanceNumber,
     rows,
     columns,
