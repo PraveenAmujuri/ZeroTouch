@@ -15,7 +15,11 @@ import {
   Activity,
   Archive,
   History,
-  FileText
+  FileText,
+  Maximize,
+  Minimize,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { parseDICOMBuffer, DICOMStudyMeta } from '../utils/dicomLoader';
 import { extractDicomFilesFromZip } from '../utils/zipLoader';
@@ -58,6 +62,10 @@ export const Viewer: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string>('Initializing viewer...');
   const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
 
+  // Fullscreen & UI Layout
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
   // Recent Studies Cache
   const [recentStudies, setRecentStudies] = useState<Omit<CachedDICOMStudy, 'buffer'>[]>([]);
   const [showRecentDrawer, setShowRecentDrawer] = useState<boolean>(false);
@@ -73,6 +81,7 @@ export const Viewer: React.FC = () => {
   const [gestureFps, setGestureFps] = useState<number>(0);
 
   // DOM Refs
+  const viewerContainerRef = useRef<HTMLDivElement | null>(null);
   const dicomCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const gestureControllerRef = useRef<GestureController | null>(null);
@@ -81,6 +90,33 @@ export const Viewer: React.FC = () => {
   // Mouse interaction state for manual viewport drag
   const isMouseDownRef = useRef<boolean>(false);
   const mouseStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const fsActive = Boolean(document.fullscreenElement);
+      setIsFullscreen(fsActive);
+      if (fsActive) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (viewerContainerRef.current) {
+          await viewerContainerRef.current.requestFullscreen();
+        }
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.warn('Fullscreen error:', err);
+    }
+  };
 
   // Load Recent studies list from IndexedDB on mount
   useEffect(() => {
@@ -104,7 +140,6 @@ export const Viewer: React.FC = () => {
   // Helper: Cache a study in IndexedDB with thumbnail
   const cacheCurrentStudy = useCallback((meta: DICOMStudyMeta, buffer: ArrayBuffer, name: string) => {
     try {
-      // Create thumbnail from first frame
       const thumbCanvas = document.createElement('canvas');
       meta.frames[0]?.renderToCanvas(thumbCanvas, meta.frames[0].windowCenter, meta.frames[0].windowWidth);
       const thumbnailDataUrl = thumbCanvas.toDataURL('image/jpeg', 0.6);
@@ -217,7 +252,6 @@ export const Viewer: React.FC = () => {
             setStatusMessage(`Loaded ${extractedDicom[0].name} from ZIP (${meta.numberOfFrames} frames)`);
             cacheCurrentStudy(meta, extractedDicom[0].buffer, extractedDicom[0].name);
           } else {
-            // Multi-slice series in ZIP
             const parsedSlices = [];
             for (const item of extractedDicom) {
               const meta = parseDICOMBuffer(item.buffer, item.name);
@@ -292,7 +326,7 @@ export const Viewer: React.FC = () => {
           setStatusMessage(`Failed to parse ${file.name}: ${err.message}`);
         }
       } else {
-        // Multiple files belonging to a slice series (e.g. CT/MR volume)
+        // Multiple files belonging to a slice series
         try {
           setStatusMessage(`Reading series of ${files.length} DICOM slices...`);
           const parsedSlices = [];
@@ -504,6 +538,8 @@ export const Viewer: React.FC = () => {
       } else if (e.key === 'r' || e.key === 'R') {
         setZoomLevel(1.0);
         setPanPos({ x: 0, y: 0 });
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
       }
     };
 
@@ -537,39 +573,51 @@ export const Viewer: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans select-none">
+    <div
+      ref={viewerContainerRef}
+      className="min-h-screen bg-[#111114] text-[#ececed] flex flex-col font-sans select-none overflow-hidden"
+    >
       {/* 1. TOP MEDICAL APP HEADER BAR */}
-      <header className="h-16 bg-[#121217] border-b border-white/10 px-4 sm:px-6 flex items-center justify-between z-20">
+      <header className="h-16 bg-[#18181d] border-b border-[#27272a] px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
         {/* Left: Back to Home & Brand */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded"
+            title="Return to Main Website"
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#9999a3] hover:text-[#27272a] px-3.5 py-1.5 rounded-full border border-[#27272a] bg-[#22222a] hover:bg-[#ffffff] transition-all"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Main Website</span>
+            <span className="hidden sm:inline">Main Website</span>
           </Link>
 
-          <div className="h-5 w-px bg-zinc-700 hidden sm:block" />
+          <div className="h-5 w-px bg-[#27272a] hidden sm:block" />
+
+          {/* Sidebar Toggle */}
+          <button
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            className="p-1.5 rounded-full border border-[#27272a] bg-[#22222a] hover:bg-[#27272a] text-[#9999a3] hover:text-white transition-colors"
+          >
+            {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
 
           <div className="flex items-center gap-2">
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isGestureEnabled && isCameraReady ? 'bg-emerald-400 animate-pulse' : 'bg-orange-500'
+              className={`w-2 h-2 rounded-full ${
+                isGestureEnabled && isCameraReady ? 'bg-[#FF8066] animate-pulse shadow-[0_0_8px_#FF8066]' : 'bg-[#FF8066]/60'
               }`}
             />
-            <span className="font-extrabold text-sm tracking-tight text-white uppercase font-pratico">
-              0Touch <span className="text-orange-500">Workspace</span>
-            </span>
-            <span className="text-[10px] font-mono bg-zinc-800/80 text-zinc-400 px-2 py-0.5 border border-zinc-700 rounded">
-              Clinical DICOM
+            <span
+              className="text-sm tracking-tight text-white uppercase whitespace-nowrap"
+              style={{ fontFamily: '"Pratico Variable", sans-serif', fontWeight: 900 }}
+            >
+              0TOUCH <span className="text-[#FF8066]">WORKSPACE</span>
             </span>
           </div>
         </div>
 
-        {/* Center: Active Gesture Mode Indicators */}
+        {/* Center: Gesture Mode Buttons (Pill-shaped with Loz Primary styling for active) */}
         <div className="hidden lg:flex items-center gap-2 font-mono text-xs">
-          <span className="text-zinc-500 font-bold uppercase text-[10px] mr-1">Gesture Mode:</span>
           {[
             { id: OperationMode.SLICE_NAV, label: '1+1: SLICE', icon: <Layers className="w-3.5 h-3.5" /> },
             { id: OperationMode.ZOOM, label: '2+2: ZOOM', icon: <ZoomIn className="w-3.5 h-3.5" /> },
@@ -582,10 +630,11 @@ export const Viewer: React.FC = () => {
                 setActiveGestureMode(m.id);
                 gestureControllerRef.current?.setMode(m.id);
               }}
-              className={`px-2.5 py-1 flex items-center gap-1.5 border text-xs font-bold transition-all rounded ${
+              title={`Switch to ${m.id} Mode`}
+              className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-all border ${
                 activeGestureMode === m.id
-                  ? 'bg-orange-500 border-orange-400 text-white shadow-md shadow-orange-500/20'
-                  : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:bg-zinc-700/60'
+                  ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] shadow-sm font-bold scale-[1.02]'
+                  : 'bg-[#22222a] border-[#27272a] text-[#9999a3] hover:bg-[#2b2b36] hover:text-white'
               }`}
             >
               {m.icon}
@@ -594,265 +643,279 @@ export const Viewer: React.FC = () => {
           ))}
         </div>
 
-        {/* Right: Gesture Toggle & Tester link */}
-        <div className="flex items-center gap-3">
+        {/* Right: Actions (Recent, Fullscreen, Gesture Toggle) */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Recently Opened Drawer Toggle */}
           <button
             onClick={() => setShowRecentDrawer((prev) => !prev)}
-            className={`flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded border transition-all ${
+            title="Browse Recently Opened DICOM Studies"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
               showRecentDrawer
-                ? 'bg-orange-500/20 border-orange-500 text-orange-400 font-bold'
-                : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:text-white'
+                ? 'bg-[#FF8066] border-[#27272a] text-[#27272a] font-bold'
+                : 'bg-[#22222a] border-[#27272a] text-[#9999a3] hover:text-white hover:bg-[#2b2b36]'
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>Recent ({recentStudies.length})</span>
+            <span className="hidden sm:inline">Recent</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#18181d] text-white/70">
+              {recentStudies.length}
+            </span>
           </button>
 
+          {/* Fullscreen Toggle Button */}
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit Fullscreen (F)' : 'Enter Fullscreen (F)'}
+            className="p-2 rounded-full border border-[#27272a] bg-[#22222a] hover:bg-[#2b2b36] text-[#9999a3] hover:text-white transition-colors"
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4 text-[#FF8066]" /> : <Maximize className="w-4 h-4" />}
+          </button>
+
+          {/* Testbed Link */}
           <Link
             to="/gestures-test"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded bg-orange-500/10 border border-orange-500/30"
+            title="Open Standalone Gesture Engine Testbed"
+            className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-[#FF8066] hover:text-white px-3 py-1.5 rounded-full bg-[#FF8066]/10 border border-[#FF8066]/30 transition-colors"
           >
             <Activity className="w-3.5 h-3.5" />
             <span>Testbed</span>
           </Link>
 
+          {/* Enable Gestures Button */}
           <button
             onClick={toggleGestureControl}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
+            title="Toggle Two-Hand Webcam Tracking"
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all border ${
               isGestureEnabled
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                : 'bg-orange-500 hover:bg-orange-600 text-white'
+                ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] font-bold shadow-md shadow-[#FF8066]/20'
+                : 'bg-[#ffffff] hover:bg-[#27272a] text-[#27272a] hover:text-white border-[#27272a]'
             }`}
           >
             {isGestureEnabled ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
-            <span>{isGestureEnabled ? 'Gestures Active' : 'Enable Gestures'}</span>
+            <span className="hidden sm:inline">{isGestureEnabled ? 'Gestures Active' : 'Enable Gestures'}</span>
           </button>
         </div>
       </header>
 
-      {/* 2. SUB-HEADER METADATA STRIP (Full Clinical Values) */}
-      <div className="bg-[#18181f] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+      {/* 2. SUB-HEADER METADATA STRIP */}
+      <div className="bg-[#141418] border-b border-[#27272a]/80 px-4 py-1.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono shrink-0">
         <div className="flex items-center gap-4 flex-wrap">
           <div>
-            <span className="text-zinc-500 mr-1.5">PATIENT:</span>
-            <span className="text-white font-bold">{studyMeta?.patientName || 'ANONYMOUS'}</span>
+            <span className="text-[#6c6c75] mr-1">PATIENT:</span>
+            <span className="text-white font-semibold">{studyMeta?.patientName || 'ANONYMOUS'}</span>
           </div>
           <div>
-            <span className="text-zinc-500 mr-1.5">ID:</span>
-            <span className="text-zinc-300">{studyMeta?.patientId || 'N/A'}</span>
+            <span className="text-[#6c6c75] mr-1">ID:</span>
+            <span className="text-[#a1a1aa]">{studyMeta?.patientId || 'N/A'}</span>
           </div>
           <div>
-            <span className="text-zinc-500 mr-1.5">MODALITY:</span>
-            <span className="text-orange-400 font-bold">{studyMeta?.modality || 'OT'}</span>
+            <span className="text-[#6c6c75] mr-1">MODALITY:</span>
+            <span className="text-[#FF8066] font-bold">{studyMeta?.modality || 'OT'}</span>
           </div>
-          <div>
-            <span className="text-zinc-500 mr-1.5">STUDY:</span>
-            <span className="text-zinc-300">{currentFile}</span>
+          <div className="hidden sm:block">
+            <span className="text-[#6c6c75] mr-1">STUDY:</span>
+            <span className="text-[#a1a1aa] truncate max-w-xs">{currentFile}</span>
           </div>
-          {studyMeta?.studyDate && (
-            <div>
-              <span className="text-zinc-500 mr-1.5">DATE:</span>
-              <span className="text-zinc-400">{studyMeta.studyDate}</span>
-            </div>
-          )}
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap text-zinc-400">
+        <div className="flex items-center gap-4 flex-wrap text-[#a1a1aa]">
           <div>
-            <span className="text-zinc-500 mr-1">SLICE:</span>
+            <span className="text-[#6c6c75] mr-1">FRAME:</span>
             <span className="text-white font-bold">
               {studyMeta ? `${currentSlice + 1} / ${studyMeta.numberOfFrames}` : '1 / 1'}
             </span>
           </div>
           <div>
-            <span className="text-zinc-500 mr-1">ZOOM:</span>
+            <span className="text-[#6c6c75] mr-1">ZOOM:</span>
             <span className="text-white">{zoomLevel.toFixed(2)}x</span>
           </div>
           <div>
-            <span className="text-zinc-500 mr-1">WINDOW:</span>
+            <span className="text-[#6c6c75] mr-1">WINDOW:</span>
             <span className="text-white">
               W:{Math.round(windowWidth)} L:{Math.round(windowCenter)}
             </span>
           </div>
-          <div className="text-emerald-400 font-semibold">{statusMessage}</div>
+          <div className="text-[#FF8066] font-medium hidden md:block">{statusMessage}</div>
         </div>
       </div>
 
       {/* 3. MAIN WORKSPACE */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-        {/* Left Sidebar: Controls, Samples & Archive Support */}
-        <aside className="w-full md:w-64 bg-[#121217] border-r border-white/10 p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
-          {/* Sample Studies Selector */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
-              Sample DICOM Studies
-            </span>
-            <div className="space-y-1.5">
-              <button
-                onClick={() => loadDicomFromUrl('/0003.dcm', '0003.dcm')}
-                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
-                  currentFile.includes('0003')
-                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
-                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                <span>0003.DCM (Angio 17f)</span>
-                <span className="text-[10px] opacity-60">XA</span>
-              </button>
-
-              <button
-                onClick={() => loadDicomFromUrl('/0020.DCM', '0020.DCM')}
-                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
-                  currentFile.includes('0020')
-                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
-                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                <span>0020.DCM (Echo Cine)</span>
-                <span className="text-[10px] opacity-60">US</span>
-              </button>
-
-              <button
-                onClick={() => loadDicomFromUrl('/MRBRAIN.DCM', 'MRBRAIN.DCM')}
-                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
-                  currentFile.includes('MRBRAIN')
-                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
-                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                <span>MRBRAIN.DCM</span>
-                <span className="text-[10px] opacity-60">MR</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Upload Dropzone (Supports .DCM, Folder, and .ZIP) */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
-              Load DICOM / ZIP Archive
-            </span>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDraggingFile(true);
-              }}
-              onDragLeave={() => setIsDraggingFile(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDraggingFile(false);
-                handleFileUpload(e.dataTransfer.files);
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              className={`p-4 rounded-lg border-2 border-dashed text-center cursor-pointer transition-all ${
-                isDraggingFile
-                  ? 'border-orange-500 bg-orange-500/10'
-                  : 'border-zinc-700 bg-zinc-800/30 hover:border-zinc-500'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Upload className="w-4 h-4 text-orange-400" />
-                <Archive className="w-4 h-4 text-zinc-400" />
-              </div>
-              <p className="text-xs text-zinc-300 font-semibold">Drop .DCM, Series or .ZIP</p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">Auto-extracts archives</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".dcm,.dicom,.zip,application/zip,application/dicom"
-                className="hidden"
-                onChange={(e) => handleFileUpload(e.target.files)}
-              />
-            </div>
-          </div>
-
-          {/* Presets & Contrast */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
-              Viewing Presets
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {PRESET_LIST.map((preset, idx) => (
+        {/* Left Collapsible Sidebar: Controls, Samples & Archive Support */}
+        {!isSidebarCollapsed && (
+          <aside className="w-full md:w-64 bg-[#141418] border-r border-[#27272a] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all">
+            {/* Sample Studies Selector */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
+                Sample DICOM Studies
+              </span>
+              <div className="space-y-1.5">
                 <button
-                  key={preset}
-                  onClick={() => {
-                    setActivePresetIndex(idx);
-                    const p = PRESET_WINDOWS[preset];
-                    setWindowCenter(p.wc);
-                    setWindowWidth(p.ww);
-                  }}
-                  className={`px-2 py-1.5 rounded text-[10px] font-mono transition-all text-left border ${
-                    activePresetIndex === idx
-                      ? 'bg-orange-500 text-white border-orange-400 font-bold'
-                      : 'bg-zinc-800/50 text-zinc-400 border-zinc-700/60 hover:text-white'
+                  onClick={() => loadDicomFromUrl('/0003.dcm', '0003.dcm')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                    currentFile.includes('0003')
+                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
+                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
                   }`}
                 >
-                  {preset.replace(' (CT)', '')}
+                  <span>0003.DCM (Angio 17f)</span>
+                  <span className="text-[10px] opacity-60">XA</span>
                 </button>
-              ))}
-            </div>
 
-            <button
-              onClick={() => setIsInverted((prev) => !prev)}
-              className={`w-full mt-2 px-3 py-1.5 rounded text-xs font-mono flex items-center justify-center gap-1.5 border transition-all ${
-                isInverted
-                  ? 'bg-orange-500/20 border-orange-500 text-orange-400 font-bold'
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5" />
-              <span>Invert Grayscale ({isInverted ? 'ON' : 'OFF'})</span>
-            </button>
-          </div>
+                <button
+                  onClick={() => loadDicomFromUrl('/0020.DCM', '0020.DCM')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                    currentFile.includes('0020')
+                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
+                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
+                  }`}
+                >
+                  <span>0020.DCM (Echo Cine)</span>
+                  <span className="text-[10px] opacity-60">US</span>
+                </button>
 
-          {/* Detailed Image Specs Card */}
-          {studyMeta && (
-            <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1.5 text-[11px] font-mono text-zinc-400">
-              <span className="text-[10px] uppercase font-bold text-white/70 block border-b border-white/5 pb-1">
-                DICOM Specs
-              </span>
-              <div className="flex justify-between">
-                <span>Matrix:</span>
-                <span className="text-white">{studyMeta.columns} × {studyMeta.rows}</span>
+                <button
+                  onClick={() => loadDicomFromUrl('/MRBRAIN.DCM', 'MRBRAIN.DCM')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between border ${
+                    currentFile.includes('MRBRAIN')
+                      ? 'bg-[#FF8066]/15 border-[#FF8066] text-[#FF8066] font-bold shadow-sm'
+                      : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:bg-[#282832] hover:text-white'
+                  }`}
+                >
+                  <span>MRBRAIN.DCM</span>
+                  <span className="text-[10px] opacity-60">MR</span>
+                </button>
               </div>
-              {studyMeta.sliceThickness && (
-                <div className="flex justify-between">
-                  <span>Thickness:</span>
-                  <span className="text-white">{studyMeta.sliceThickness} mm</span>
-                </div>
-              )}
-              {studyMeta.kvp && (
-                <div className="flex justify-between">
-                  <span>KVP:</span>
-                  <span className="text-white">{studyMeta.kvp} kV</span>
-                </div>
-              )}
-              {studyMeta.institutionName && (
-                <div className="truncate">
-                  <span className="text-zinc-500">Inst: </span>
-                  <span className="text-white">{studyMeta.institutionName}</span>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* Reset Viewport */}
-          <button
-            onClick={() => {
-              setZoomLevel(1.0);
-              setPanPos({ x: 0, y: 0 });
-            }}
-            className="w-full px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-mono flex items-center justify-center gap-2 text-zinc-300 hover:text-white transition-all mt-auto"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Viewport</span>
-          </button>
-        </aside>
+            {/* Upload Dropzone (Supports .DCM, Series, and .ZIP) */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
+                Load DICOM / ZIP Archive
+              </span>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingFile(true);
+                }}
+                onDragLeave={() => setIsDraggingFile(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingFile(false);
+                  handleFileUpload(e.dataTransfer.files);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-4 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${
+                  isDraggingFile
+                    ? 'border-[#FF8066] bg-[#FF8066]/10'
+                    : 'border-[#27272a] bg-[#1a1a20] hover:border-[#FF8066]/60 hover:bg-[#1e1e26]'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-1.5">
+                  <Upload className="w-4 h-4 text-[#FF8066]" />
+                  <Archive className="w-4 h-4 text-[#888894]" />
+                </div>
+                <p className="text-xs text-white/90 font-semibold">Drop .DCM, Series or .ZIP</p>
+                <p className="text-[10px] text-[#888894] mt-0.5">Instant browser extraction</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".dcm,.dicom,.zip,application/zip,application/dicom"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e.target.files)}
+                />
+              </div>
+            </div>
+
+            {/* Viewing Presets */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#888894] font-bold block">
+                Viewing Presets
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PRESET_LIST.map((preset, idx) => (
+                  <button
+                    key={preset}
+                    onClick={() => {
+                      setActivePresetIndex(idx);
+                      const p = PRESET_WINDOWS[preset];
+                      setWindowCenter(p.wc);
+                      setWindowWidth(p.ww);
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-mono transition-all text-left border ${
+                      activePresetIndex === idx
+                        ? 'bg-[#FF8066] text-[#27272a] border-[#27272a] font-bold shadow-sm'
+                        : 'bg-[#1e1e24] text-[#a1a1aa] border-[#27272a] hover:bg-[#282832] hover:text-white'
+                    }`}
+                  >
+                    {preset.replace(' (CT)', '')}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setIsInverted((prev) => !prev)}
+                className={`w-full mt-2 px-3 py-1.5 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 border transition-all ${
+                  isInverted
+                    ? 'bg-[#FF8066]/20 border-[#FF8066] text-[#FF8066] font-bold'
+                    : 'bg-[#1e1e24] border-[#27272a] text-[#a1a1aa] hover:text-white'
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" />
+                <span>Invert Grayscale ({isInverted ? 'ON' : 'OFF'})</span>
+              </button>
+            </div>
+
+            {/* Detailed Image Specs Card */}
+            {studyMeta && (
+              <div className="p-3 rounded-xl bg-[#18181f] border border-[#27272a] space-y-1.5 text-[11px] font-mono text-[#888894]">
+                <span className="text-[10px] uppercase font-bold text-white/80 block border-b border-[#27272a] pb-1">
+                  DICOM Information
+                </span>
+                <div className="flex justify-between">
+                  <span>Resolution:</span>
+                  <span className="text-white">{studyMeta.columns} × {studyMeta.rows}</span>
+                </div>
+                {studyMeta.sliceThickness && (
+                  <div className="flex justify-between">
+                    <span>Thickness:</span>
+                    <span className="text-white">{studyMeta.sliceThickness} mm</span>
+                  </div>
+                )}
+                {studyMeta.kvp && (
+                  <div className="flex justify-between">
+                    <span>Voltage:</span>
+                    <span className="text-white">{studyMeta.kvp} kVp</span>
+                  </div>
+                )}
+                {studyMeta.institutionName && (
+                  <div className="truncate">
+                    <span className="text-[#6c6c75]">Site: </span>
+                    <span className="text-white">{studyMeta.institutionName}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reset Viewport */}
+            <button
+              onClick={() => {
+                setZoomLevel(1.0);
+                setPanPos({ x: 0, y: 0 });
+              }}
+              title="Reset Viewport Scale and Position (R)"
+              className="w-full px-3 py-2 rounded-full border border-[#27272a] bg-[#1e1e24] hover:bg-[#ffffff] text-[#a1a1aa] hover:text-[#27272a] text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-auto"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Viewport</span>
+            </button>
+          </aside>
+        )}
 
         {/* Center: Viewport */}
         <main
-          className="flex-1 bg-black relative flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
+          className="flex-1 bg-[#09090b] relative flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -866,71 +929,103 @@ export const Viewer: React.FC = () => {
               transformOrigin: 'center center',
               transition: isMouseDownRef.current ? 'none' : 'transform 0.05s ease-out',
             }}
-            className="max-w-full max-h-full object-contain pointer-events-none"
+            className="max-w-full max-h-full object-contain pointer-events-none drop-shadow-2xl"
           />
 
-          {/* Clinical Corner HUD Overlays (Inspired by Professional PACS / Saga) */}
+          {/* Transparent DICOM Corner HUD Overlays (Clean, borderless, text-shadowed) */}
           {studyMeta && (
             <>
               {/* Top-Left Corner: Patient Demographics */}
-              <div className="absolute top-4 left-4 font-mono text-xs text-white/80 space-y-0.5 pointer-events-none bg-black/40 backdrop-blur-sm p-2.5 rounded border border-white/10">
-                <div className="font-bold text-orange-400">{studyMeta.patientName}</div>
-                <div className="text-[11px] text-zinc-400">{studyMeta.patientId}</div>
-                {studyMeta.patientSex && <div className="text-[10px] text-zinc-500">Sex: {studyMeta.patientSex}</div>}
+              <div
+                className="absolute top-4 left-4 font-mono text-xs text-white/90 space-y-0.5 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.8)' }}
+              >
+                <div className="font-bold text-[#FF8066] text-sm tracking-tight">{studyMeta.patientName}</div>
+                <div className="text-[11px] text-white/70">{studyMeta.patientId}</div>
+                {studyMeta.patientSex && <div className="text-[10px] text-white/50">Sex: {studyMeta.patientSex}</div>}
               </div>
 
               {/* Top-Right Corner: Study Date & Series */}
-              <div className="absolute top-4 right-80 font-mono text-xs text-right text-white/80 space-y-0.5 pointer-events-none bg-black/40 backdrop-blur-sm p-2.5 rounded border border-white/10 hidden xl:block">
-                <div className="text-zinc-300">{studyMeta.studyDate}</div>
-                <div className="text-[11px] text-zinc-400 truncate max-w-xs">{studyMeta.seriesDescription}</div>
-                <div className="text-[10px] text-orange-400 font-bold">{studyMeta.modality}</div>
+              <div
+                className="absolute top-4 right-80 font-mono text-xs text-right text-white/90 space-y-0.5 pointer-events-none hidden xl:block"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.8)' }}
+              >
+                <div className="text-white/80">{studyMeta.studyDate}</div>
+                <div className="text-[11px] text-white/60 truncate max-w-xs">{studyMeta.seriesDescription}</div>
+                <div className="text-[11px] text-[#FF8066] font-bold">{studyMeta.modality}</div>
               </div>
 
               {/* Bottom-Left Corner: Slice Number & Location */}
-              <div className="absolute bottom-16 left-4 font-mono text-xs text-white/80 space-y-0.5 pointer-events-none bg-black/40 backdrop-blur-sm p-2.5 rounded border border-white/10">
+              <div
+                className="absolute bottom-16 left-4 font-mono text-xs text-white/90 space-y-0.5 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.8)' }}
+              >
                 <div>
-                  <span className="text-zinc-500">Img: </span>
+                  <span className="text-white/50">Img: </span>
                   <span className="text-white font-bold">{currentSlice + 1} / {studyMeta.numberOfFrames}</span>
                 </div>
-                <div className="text-[11px] text-zinc-400">
+                <div className="text-[11px] text-white/70">
                   Zoom: {zoomLevel.toFixed(2)}x
                 </div>
               </div>
 
               {/* Bottom-Right Corner: Window Level & Resolution */}
-              <div className="absolute bottom-16 right-4 font-mono text-xs text-right text-white/80 space-y-0.5 pointer-events-none bg-black/40 backdrop-blur-sm p-2.5 rounded border border-white/10">
+              <div
+                className="absolute bottom-16 right-4 font-mono text-xs text-right text-white/90 space-y-0.5 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.8)' }}
+              >
                 <div>
-                  <span className="text-zinc-500">W: </span>
+                  <span className="text-white/50">W: </span>
                   <span className="text-white font-bold">{Math.round(windowWidth)}</span>
-                  <span className="text-zinc-500 ml-2">L: </span>
+                  <span className="text-white/50 ml-2">L: </span>
                   <span className="text-white font-bold">{Math.round(windowCenter)}</span>
                 </div>
-                <div className="text-[11px] text-zinc-400">
+                <div className="text-[11px] text-white/70">
                   {studyMeta.columns} × {studyMeta.rows}
                 </div>
               </div>
 
               {/* Orientation Labels */}
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-white/40 pointer-events-none">A</div>
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-white/40 pointer-events-none">P</div>
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-white/40 pointer-events-none">R</div>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-white/40 pointer-events-none">L</div>
+              <div
+                className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-white/50 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+              >
+                A
+              </div>
+              <div
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-white/50 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+              >
+                P
+              </div>
+              <div
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-white/50 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+              >
+                R
+              </div>
+              <div
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-white/50 pointer-events-none"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+              >
+                L
+              </div>
             </>
           )}
 
           {/* Slice Timeline Navigation Slider (Bottom) */}
           {studyMeta && studyMeta.numberOfFrames > 1 && (
-            <div className="absolute bottom-4 left-8 right-8 bg-black/75 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 flex items-center gap-4 z-10">
-              <span className="text-xs font-mono text-zinc-400 shrink-0">Frame:</span>
+            <div className="absolute bottom-4 left-8 right-8 bg-[#18181d]/85 backdrop-blur-md px-4 py-2 rounded-full border border-[#27272a] flex items-center gap-4 z-10 shadow-lg">
+              <span className="text-xs font-mono text-[#888894] shrink-0">Frame:</span>
               <input
                 type="range"
                 min={0}
                 max={studyMeta.numberOfFrames - 1}
                 value={currentSlice}
                 onChange={(e) => setCurrentSlice(parseInt(e.target.value, 10))}
-                className="flex-1 accent-orange-500 cursor-pointer"
+                className="flex-1 accent-[#FF8066] cursor-pointer"
               />
-              <span className="text-xs font-mono font-bold text-orange-400 shrink-0">
+              <span className="text-xs font-mono font-bold text-[#FF8066] shrink-0">
                 {currentSlice + 1} / {studyMeta.numberOfFrames}
               </span>
             </div>
@@ -939,15 +1034,20 @@ export const Viewer: React.FC = () => {
 
         {/* Recently Opened Drawer Slideout */}
         {showRecentDrawer && (
-          <div className="absolute inset-y-0 right-0 w-80 bg-[#121217]/95 backdrop-blur-xl border-l border-white/10 z-40 p-5 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="absolute inset-y-0 right-0 w-80 bg-[#141418]/95 backdrop-blur-xl border-l border-[#27272a] z-40 p-5 flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-orange-400" />
-                <span className="font-bold text-sm font-pratico">Recently Opened Studies</span>
+                <History className="w-4 h-4 text-[#FF8066]" />
+                <span
+                  className="font-bold text-sm uppercase text-white"
+                  style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+                >
+                  Recently Opened Studies
+                </span>
               </div>
               <button
                 onClick={() => setShowRecentDrawer(false)}
-                className="text-xs text-zinc-400 hover:text-white"
+                className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10"
               >
                 ✕
               </button>
@@ -955,7 +1055,7 @@ export const Viewer: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto mt-4 space-y-2.5 pr-1">
               {recentStudies.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 text-xs font-mono">
+                <div className="text-center py-12 text-[#888894] text-xs font-mono">
                   No cached studies yet. Opened DICOMs will persist here automatically.
                 </div>
               ) : (
@@ -963,26 +1063,26 @@ export const Viewer: React.FC = () => {
                   <div
                     key={s.id}
                     onClick={() => loadFromCache(s.id, s.fileName)}
-                    className="p-2.5 rounded-lg bg-zinc-800/40 hover:bg-zinc-800 border border-zinc-700/50 hover:border-orange-500/50 cursor-pointer transition-all flex gap-3 items-center group"
+                    className="p-2.5 rounded-xl bg-[#1e1e24] hover:bg-[#282832] border border-[#27272a] hover:border-[#FF8066]/60 cursor-pointer transition-all flex gap-3 items-center group"
                   >
                     {s.thumbnailDataUrl ? (
                       <img
                         src={s.thumbnailDataUrl}
                         alt="thumb"
-                        className="w-12 h-12 rounded object-cover bg-black shrink-0 border border-white/10"
+                        className="w-12 h-12 rounded-lg object-cover bg-black shrink-0 border border-white/10"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
                         <FileText className="w-5 h-5 text-zinc-500" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1 font-mono text-xs">
-                      <div className="font-bold text-white truncate group-hover:text-orange-400 transition-colors">
+                      <div className="font-bold text-white truncate group-hover:text-[#FF8066] transition-colors">
                         {s.patientName}
                       </div>
-                      <div className="text-[11px] text-zinc-400 truncate">{s.fileName}</div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
-                        <span className="text-orange-400 font-bold">{s.modality}</span>
+                      <div className="text-[11px] text-[#a1a1aa] truncate">{s.fileName}</div>
+                      <div className="flex items-center gap-2 text-[10px] text-[#888894] mt-0.5">
+                        <span className="text-[#FF8066] font-bold">{s.modality}</span>
                         <span>•</span>
                         <span>{s.numberOfFrames} f</span>
                       </div>
@@ -996,18 +1096,20 @@ export const Viewer: React.FC = () => {
 
         {/* Floating Webcam & Gesture HUD (Top-Right / PIP) */}
         {isGestureEnabled && (
-          <div className="absolute top-4 right-4 z-30 w-72 bg-black/85 backdrop-blur-md rounded-xl border border-white/20 shadow-2xl overflow-hidden">
+          <div className="absolute top-4 right-4 z-30 w-72 bg-[#18181d]/90 backdrop-blur-md rounded-2xl border border-[#27272a] shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="px-3 py-2 bg-white/5 border-b border-white/10 flex items-center justify-between text-xs font-mono">
+            <div className="px-3.5 py-2.5 bg-[#22222a]/60 border-b border-[#27272a] flex items-center justify-between text-xs font-mono">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-bold text-white">0Touch Gesture Stream</span>
+                <span className="w-2 h-2 rounded-full bg-[#FF8066] animate-pulse" />
+                <span className="font-bold text-white uppercase text-[11px] tracking-wider">
+                  0Touch Gesture Stream
+                </span>
               </div>
-              <span className="text-zinc-400">{gestureFps} FPS</span>
+              <span className="text-[#a1a1aa]">{gestureFps} FPS</span>
             </div>
 
             {/* Video element running MediaPipe analysis */}
-            <div className="relative aspect-video bg-zinc-900 overflow-hidden">
+            <div className="relative aspect-video bg-black overflow-hidden">
               <video
                 ref={webcamVideoRef}
                 playsInline
@@ -1016,11 +1118,11 @@ export const Viewer: React.FC = () => {
               />
 
               {/* Status pill on video */}
-              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-mono px-2 py-1 rounded bg-black/70 border border-white/10">
-                <span className="text-orange-400 font-bold truncate">
+              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-white/10 backdrop-blur-sm">
+                <span className="text-[#FF8066] font-bold truncate">
                   {gestureDebug?.classifiedGesture || 'WAITING'}
                 </span>
-                <span className="text-zinc-400 shrink-0 ml-1">
+                <span className="text-white/60 shrink-0 ml-1">
                   {gestureDebug?.trackingStatus || 'SEARCH'}
                 </span>
               </div>
@@ -1029,33 +1131,33 @@ export const Viewer: React.FC = () => {
             {/* Gesture Telemetry Pill */}
             <div className="p-3 space-y-2 text-xs font-mono">
               <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="p-1.5 rounded bg-blue-500/10 border border-blue-500/20">
-                  <span className="text-[10px] text-blue-400 block font-bold">LEFT HAND</span>
-                  <span className="text-lg font-extrabold text-blue-400">
+                <div className="p-1.5 rounded-xl bg-[#22222a] border border-[#27272a]">
+                  <span className="text-[10px] text-sky-400 block font-bold">LEFT HAND</span>
+                  <span className="text-lg font-extrabold text-sky-400">
                     {leftHand?.extendedCount ?? 0}
                   </span>
-                  <span className="text-[10px] text-zinc-400 block">{leftHand?.posture ?? 'NONE'}</span>
+                  <span className="text-[10px] text-[#888894] block">{leftHand?.posture ?? 'NONE'}</span>
                 </div>
 
-                <div className="p-1.5 rounded bg-orange-500/10 border border-orange-500/20">
-                  <span className="text-[10px] text-orange-400 block font-bold">RIGHT HAND</span>
-                  <span className="text-lg font-extrabold text-orange-400">
+                <div className="p-1.5 rounded-xl bg-[#22222a] border border-[#27272a]">
+                  <span className="text-[10px] text-[#FF8066] block font-bold">RIGHT HAND</span>
+                  <span className="text-lg font-extrabold text-[#FF8066]">
                     {rightHand?.extendedCount ?? 0}
                   </span>
-                  <span className="text-[10px] text-zinc-400 block">{rightHand?.posture ?? 'NONE'}</span>
+                  <span className="text-[10px] text-[#888894] block">{rightHand?.posture ?? 'NONE'}</span>
                 </div>
               </div>
 
               {/* Hold Progress Bar */}
               {gestureDebug?.holdProgressPercent !== undefined && gestureDebug.holdProgressPercent > 0 && (
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] text-zinc-400">
+                  <div className="flex justify-between text-[10px] text-[#888894]">
                     <span>Confirmation Hold:</span>
-                    <span className="text-orange-400">{gestureDebug.holdProgressPercent}%</span>
+                    <span className="text-[#FF8066] font-bold">{gestureDebug.holdProgressPercent}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-orange-500 transition-all duration-75"
+                      className="h-full bg-[#FF8066] transition-all duration-75"
                       style={{ width: `${gestureDebug.holdProgressPercent}%` }}
                     />
                   </div>
@@ -1067,7 +1169,7 @@ export const Viewer: React.FC = () => {
 
         {/* Error Notification */}
         {cameraError && (
-          <div className="absolute bottom-4 left-4 z-40 p-3 rounded-lg bg-red-600/90 text-white text-xs flex items-center gap-2 font-mono shadow-xl">
+          <div className="absolute bottom-4 left-4 z-40 p-3 rounded-xl bg-[#27272a] text-[#FF8066] border border-[#FF8066]/40 text-xs flex items-center gap-2 font-mono shadow-xl">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{cameraError}</span>
           </div>
