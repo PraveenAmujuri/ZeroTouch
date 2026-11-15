@@ -1,0 +1,614 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+export const Home: React.FC = () => {
+  const [selectedModality, setSelectedModality] = useState<'echo' | 'angio' | 'mri'>('echo');
+  const [streamMode, setStreamMode] = useState<'realtime' | 'buffered'>('realtime');
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      setSubscribed(true);
+      setEmail('');
+    }
+  };
+
+  return (
+    <main id="MainContent" className="content-for-layout focus-none w-full bg-[#f3f4fb]" role="main" tabIndex={-1}>
+      
+      {/* 1. HERO BANNER SECTION (Exact template--17036177244384__image_banner layout from theloz.co) */}
+      <section id="shopify-section-template--17036177244384__image_banner" className="shopify-section section w-full">
+        <div
+          id="Banner-template--17036177244384__image_banner"
+          className="banner flex flex-col md:flex-row w-full h-[34.4vw] min-h-[460px] max-h-[660px]"
+        >
+          {/* Left Column: Exactly 40% width on desktop (matching 4-out-of-10 cols on Loz), 406px divider in 1024 screenshot */}
+          <div className="banner__content bg-[#6f7bd4] w-full md:w-[40%] flex items-center justify-center p-0 h-full shrink-0">
+            <div className="banner__box px-6 sm:px-8 py-6 sm:py-8 md:py-10 content-container tw-bg-transparent flex flex-col justify-around w-full h-full">
+              <div className="flex flex-col justify-center relative w-full max-w-[480px] mx-auto text-center">
+                
+                {/* Line 1: Animated / morphing cycling text (Heavy Bold) */}
+                <div className="banner__heading text-center">
+                  <div className="inline-block text-center overflow-y-hidden h-[75px] sm:h-[90px] md:h-[105px] w-full">
+                    <ul className="cycle-slider list-none m-0 p-0 text-center w-full">
+                      <li className="h-[75px] sm:h-[90px] md:h-[105px] flex items-center justify-center">
+                        <h1
+                          className="text-[#262929] leading-tight m-0 uppercase whitespace-nowrap"
+                          style={{
+                            fontFamily: '"Pratico Variable", sans-serif',
+                            fontSize: 'clamp(54px, 5.5vw, 88px)',
+                            fontWeight: 900,
+                          }}
+                        >
+                          NAVIGATE
+                        </h1>
+                      </li>
+                      <li className="h-[75px] sm:h-[90px] md:h-[105px] flex items-center justify-center">
+                        <h1
+                          className="text-[#262929] leading-tight m-0 uppercase whitespace-nowrap"
+                          style={{
+                            fontFamily: '"Pratico Variable", sans-serif',
+                            fontSize: 'clamp(54px, 5.5vw, 88px)',
+                            fontWeight: 900,
+                          }}
+                        >
+                          EXPLORE
+                        </h1>
+                      </li>
+                      <li className="h-[75px] sm:h-[90px] md:h-[105px] flex items-center justify-center">
+                        <h1
+                          className="text-[#262929] leading-tight m-0 uppercase whitespace-nowrap"
+                          style={{
+                            fontFamily: '"Pratico Variable", sans-serif',
+                            fontSize: 'clamp(54px, 5.5vw, 88px)',
+                            fontWeight: 900,
+                          }}
+                        >
+                          CONTROL
+                        </h1>
+                      </li>
+                      <li className="h-[75px] sm:h-[90px] md:h-[105px] flex items-center justify-center">
+                        <h1
+                          className="text-[#262929] leading-tight m-0 uppercase whitespace-nowrap"
+                          style={{
+                            fontFamily: '"Pratico Variable", sans-serif',
+                            fontSize: 'clamp(54px, 5.5vw, 88px)',
+                            fontWeight: 900,
+                          }}
+                        >
+                          INTERACT
+                        </h1>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Line 2: Permanent static text (Light / Normal Weight) */}
+                <div className="banner__text text-center rte mt-1 subtitle">
+                  <h2
+                    className="text-[#262929] leading-none whitespace-nowrap"
+                    style={{
+                      fontFamily: '"Pratico Variable", sans-serif',
+                      fontSize: 'clamp(52px, 5.2vw, 84px)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    DICOM With
+                  </h2>
+                </div>
+
+                {/* Line 3: Permanent static text (Heavy Bold Weight) */}
+                <div className="banner__text text-center rte mt-2">
+                  <h3
+                    className="text-[#262929] leading-none uppercase whitespace-nowrap tracking-tight"
+                    style={{
+                      fontFamily: '"Pratico Variable", sans-serif',
+                      fontSize: 'clamp(46px, 4.6vw, 76px)',
+                      fontWeight: 900,
+                    }}
+                  >
+                    OTOUCH
+                  </h3>
+                </div>
+
+                {/* Description below headline */}
+                <p className="text-xs sm:text-sm md:text-base text-[#262929]/90 font-medium leading-relaxed max-w-[380px] mx-auto mt-4 mb-3">
+                  Interact with DICOM images through intuitive hand gestures.
+                </p>
+
+                {/* Banner Buttons: LAUNCH VIEWER + EXPLORE PRODUCT with exact Loz single-line proportions */}
+                <div className="banner__buttons mt-2 mb-2 flex flex-row items-center justify-center gap-3 w-full">
+                  <Link
+                    to="/viewer"
+                    className="loz-button loz-button-primary flex-1 text-center whitespace-nowrap text-xs md:text-sm"
+                  >
+                    LAUNCH VIEWER
+                  </Link>
+                  <Link
+                    to="/features"
+                    className="loz-button loz-button-secondary flex-1 text-center whitespace-nowrap text-xs md:text-sm"
+                  >
+                    EXPLORE PRODUCT
+                    <span className="relative -top-[0.15rem]">
+                      <svg xmlns="http://www.w3.org/2000/svg" height="15" width="10" viewBox="0 0 320 512">
+                        <path d="M317.3 256l-22.6 22.6-192 192L80 493.3 34.7 448l22.6-22.6L226.7 256 57.4 86.6 34.7 64 80 18.7l22.6 22.6 192 192L317.3 256z" />
+                      </svg>
+                    </span>
+                  </Link>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Exactly 60% width on desktop (matching 6-out-of-10 cols on Loz) with md:border-l-4 border-[#27272a] */}
+          <div className="relative overflow-hidden banner__media md:border-l-4 border-[#27272a] media w-full md:w-[60%] flex-1 h-full min-h-[380px] flex items-center justify-center bg-[#6f7bd4]">
+            {/* Video animation */}
+            <video
+              className="absolute top-0 left-0 w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster="/loz_hero_animation_no_leaves.webp"
+            >
+              <source src="/hero_video.webm" type="video/webm" />
+              <source src="/hero_video.mp4" type="video/mp4" />
+              <img src="/loz_hero_animation_no_leaves.webp" width="1920" height="1080" alt="0Touch Medical Scan Visualization" />
+            </video>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 2. CENTERED TEXT BADGE SECTION */}
+      <div id="shopify-section-template--17036177244384__e7154d28-df5a-4761-ae6b-32113327176f" className="shopify-section bg-white">
+        <div className="centered-text-badge-section relative mx-auto px-6 md:px-12 3xl:px-20 py-20 md:py-24 flex flex-col gap-y-8 items-center text-center">
+          <div className="flex flex-col 3xl:flex-row justify-center items-center">
+            <h2
+              className="md:mr-10 mb-10 3xl:mb-0 text-center 3xl:text-left max-w-2xl lg:max-w-3xl 3xl:max-w-full"
+              style={{
+                color: '#27272a',
+                fontFamily: '"Pratico Variable", sans-serif',
+                fontSize: '72px',
+                fontWeight: 900,
+                letterSpacing: '1.44px',
+                lineHeight: '1.05',
+              }}
+            >
+              Touchless medical imaging with
+            </h2>
+            
+            <Link
+              to="/viewer"
+              className="bg-[#ff8066] border-4 border-[#27272a] px-14 py-6 -rotate-[4.1deg] hover:rotate-0 transition-transform duration-200"
+              aria-label="Launch 0Touch"
+            >
+              <div className="rotate-[4.1deg] hover:rotate-0 transition-transform duration-200">
+                <span
+                  style={{
+                    fontFamily: '"Pratico Variable", sans-serif',
+                    fontSize: '44px',
+                    fontWeight: 900,
+                    color: '#262929',
+                  }}
+                  className="uppercase block leading-none select-none tracking-tight"
+                >
+                  0Touch
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          <div>
+            <h4
+              style={{
+                fontFamily: '"Pratico Variable", sans-serif',
+                fontSize: '48px',
+                fontWeight: 400,
+                color: '#27272a',
+                lineHeight: '1.1',
+              }}
+              className="text-center"
+            >
+              Touchless Medical Imaging
+            </h4>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FEATURED PRODUCT / WORKSPACE SPECIFICATION SECTION */}
+      <section id="shopify-section-template--17036177244384__featured_product_w8dbKp" className="shopify-section section section-featured-product w-full border-b-4 border-[#27272a] bg-white py-16 md:py-24 px-6 md:px-12 lg:px-24">
+        <div className="page-width !pt-0 max-w-7xl mx-auto">
+          <div className="featured-product product product--small grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            
+            {/* Left: Product media container */}
+            <div className="grid__item product__media-wrapper flex justify-center items-center">
+              <div className="product-media-container global-media-settings bg-transparent w-full max-w-lg aspect-square border-4 border-[#27272a] p-8 flex flex-col justify-center items-center relative bg-[#f3f4fb]">
+                <img
+                  src={
+                    selectedModality === 'echo'
+                      ? '/sample_echo.png'
+                      : selectedModality === 'angio'
+                      ? '/sample_angio.png'
+                      : '/sample_mrbrain.png'
+                  }
+                  alt="0Touch Medical Scan"
+                  className="max-h-[340px] w-auto object-contain drop-shadow-xl"
+                />
+                <div className="absolute top-4 left-4 bg-white border-2 border-[#27272a] px-3 py-1 font-bold text-xs uppercase text-[#27272a]">
+                  DIAGNOSTIC SAMPLE: 0003.DCM
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Product Info & Radios */}
+            <div className="product__info-wrapper mb-10 md:mb-0 grid__item">
+              <div className="product__info-container flex flex-col text-left">
+                <p className="product__text inline-richtext caption-with-letter-spacing text-xs font-bold uppercase tracking-widest text-[#27272a] mb-2">
+                  <strong>0Touch Medical Scan</strong>
+                </p>
+
+                <div className="pb-4 flex flex-row justify-between items-center">
+                  <h2
+                    className="product__title !mb-0 block text-[#27272a] leading-none"
+                    style={{
+                      fontFamily: '"Pratico Variable", sans-serif',
+                      fontSize: '48px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    0Touch Gesture Engine
+                  </h2>
+
+                  <div className="w-fit flex justify-center items-center flex-col gap-y-1">
+                    <div className="flex justify-center items-center flex-col relative">
+                      <div className="w-10 h-12 bg-[#ff8066] border-2 border-[#27272a] flex items-center justify-center font-black text-white text-sm">
+                        v2.0
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#ff8066] uppercase font-extrabold tracking-wider">
+                      ACTIVE
+                    </span>
+                  </div>
+                </div>
+
+                {/* Step 1: Modality Selection */}
+                <fieldset className="product-form__input variant-input my-6">
+                  <legend
+                    className="form__label delivery-label text-[#27272a] mb-4"
+                    style={{
+                      fontFamily: '"Pratico Variable", sans-serif',
+                      fontSize: '32px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    1. Select Modality
+                  </legend>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { id: 'echo', name: 'Ultrasound', save: '11ct Slices (0020.DCM)' },
+                      { id: 'angio', name: 'Angiography', save: '17ct Cine (0003.DCM)' },
+                      { id: 'mri', name: 'Brain MRI', save: '3D Axial Series' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedModality(item.id as any)}
+                        className={`p-4 border-2 border-[#27272a] text-left transition-all ${
+                          selectedModality === item.id
+                            ? 'bg-[#6f7bd4] text-white shadow-[4px_4px_#27272a]'
+                            : 'bg-transparent text-[#27272a] hover:bg-zinc-100 opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <span className="qty_btn_value block text-lg font-bold uppercase leading-none">
+                          {item.name}
+                        </span>
+                        <span className={`qty_btn_saveText mt-2 block text-xs font-semibold ${selectedModality === item.id ? 'text-white' : 'text-[#27272a]'}`}>
+                          {item.save}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {/* Step 2: Tracking Configuration */}
+                <fieldset className="product-form__input variant-input mb-8">
+                  <legend
+                    className="form__label delivery-label text-[#27272a] mb-4"
+                    style={{
+                      fontFamily: '"Pratico Variable", sans-serif',
+                      fontSize: '32px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    2. Tracking Pipeline
+                  </legend>
+
+                  <div className="flex flex-col gap-3">
+                    <label
+                      onClick={() => setStreamMode('realtime')}
+                      className={`p-4 border-2 border-[#27272a] flex items-center justify-between cursor-pointer ${
+                        streamMode === 'realtime' ? 'bg-[#ff8066]/20' : 'bg-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="streamMode"
+                          checked={streamMode === 'realtime'}
+                          onChange={() => setStreamMode('realtime')}
+                          className="w-4 h-4 text-[#ff8066]"
+                        />
+                        <div>
+                          <span className="font-bold text-sm uppercase block text-[#27272a]">
+                            Real-Time Hand Tracking
+                          </span>
+                          <span className="text-xs text-[#27272a]/70 font-medium">
+                            Detects and tracks both hands through the webcam.
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-extrabold text-xs uppercase bg-[#ff8066] text-[#27272a] px-2.5 py-1 border border-[#27272a]">
+                        RECOMMENDED
+                      </span>
+                    </label>
+
+                    <label
+                      onClick={() => setStreamMode('buffered')}
+                      className={`p-4 border-2 border-[#27272a] flex items-center justify-between cursor-pointer ${
+                        streamMode === 'buffered' ? 'bg-[#ff8066]/20' : 'bg-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="streamMode"
+                          checked={streamMode === 'buffered'}
+                          onChange={() => setStreamMode('buffered')}
+                          className="w-4 h-4 text-[#ff8066]"
+                        />
+                        <div>
+                          <span className="font-bold text-sm uppercase block text-[#27272a]">
+                            Step-Based Directional Panning
+                          </span>
+                          <span className="text-xs text-[#27272a]/70 font-medium">
+                            Navigate images using matching finger-count gestures.
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+
+                    <div className="p-4 border-2 border-[#27272a] flex items-center justify-between bg-transparent">
+                      <div>
+                        <span className="font-bold text-sm uppercase block text-[#27272a]">
+                          Gesture Recognition &amp; Smoothing
+                        </span>
+                        <span className="text-xs text-[#27272a]/70 font-medium">
+                          Stable gesture detection with filtering and dead-zone stabilization.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+
+                {/* Launch CTA Button */}
+                <Link
+                  to="/viewer"
+                  className="loz-button loz-button-primary w-full text-center"
+                >
+                  LAUNCH INTERACTIVE WORKSPACE
+                </Link>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 4. MARQUEE TEXT SECTION */}
+      <div id="shopify-section-template--17036177244384__c483e1a6-7b93-4203-a2e9-ec33e1aa70e8" className="shopify-section">
+        <div className="marquee-text-section marquee-container bg-[#27272a] pt-16 pb-16 border-b-4 border-[#27272a]">
+          <div className="marquee">
+            <div className="marquee-content select-none">
+              &nbsp;0Touch Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.&nbsp;0Touch Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. IMAGE WITH TEXT SECTION 1 (Product Introduction Section) */}
+      <div id="shopify-section-template--17036177244384__fd2a9372-daa9-43ac-96ff-1dff8a1f596e" className="shopify-section section">
+        <div className="relative px-6 md:px-12 py-28 lg:px-44 border-t-4 border-b-4 border-[#27272a] bg-[#99a1e1]">
+          <div className="page-width !px-0 !max-w-7xl mx-auto">
+            <div className="image-with-text image-with-text--no-overlap isolate collapse-corners">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                
+                {/* Media Item */}
+                <div className="image-with-text__media-item flex justify-center">
+                  <div className="image-with-text__media w-[50%] sm:w-[55%] md:w-[65%] max-w-[340px] mx-auto">
+                    <img
+                      src="/benefit_one.webp"
+                      alt="0Touch Medical Imaging"
+                      className="w-full h-auto object-contain"
+                    />
+                  </div>
+                </div>
+
+                {/* Text Item */}
+                <div className="image-with-text__text-item flex justify-end">
+                  <div className="image-with-text__content max-w-[660px] text-left">
+                    <h2
+                      className="image-with-text__heading inline-richtext !my-0 text-[#27272a]"
+                      style={{
+                        fontFamily: '"Pratico Variable", sans-serif',
+                        fontSize: '48px',
+                        fontWeight: 600,
+                        lineHeight: '1.25',
+                      }}
+                    >
+                      Touchless interaction. A different way to navigate medical imaging.
+                    </h2>
+                    <div
+                      className="image-with-text__text rte text-body !my-6 text-[#27272a]/80"
+                      style={{
+                        fontSize: '24px',
+                        lineHeight: '115%',
+                      }}
+                    >
+                      <p>
+                        0Touch explores gesture-based interaction with medical images, allowing users to navigate DICOM studies through intuitive hand movements instead of relying entirely on traditional keyboard and mouse controls.
+                      </p>
+                    </div>
+                    <Link
+                      to="/features"
+                      className="loz-button loz-button-primary"
+                    >
+                      EXPLORE GESTURES
+                    </Link>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. IMAGE WITH TEXT SECTION 2 */}
+      <div id="shopify-section-template--17036177244384__f97598a8-41cb-46c7-a951-778d3753b27c" className="shopify-section section">
+        <div className="relative px-6 md:px-12 py-28 lg:px-44 border-b-4 border-[#27272a] bg-[#ffeeeb]">
+          <div className="page-width !px-0 !max-w-7xl mx-auto">
+            <div className="image-with-text image-with-text--no-overlap isolate collapse-corners">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                
+                {/* Text Item (order-2 md:order-1) */}
+                <div className="image-with-text__text-item flex justify-start order-2 md:order-1">
+                  <div className="image-with-text__content max-w-[660px] text-left">
+                    <h2
+                      className="image-with-text__heading inline-richtext !my-0 text-[#27272a]"
+                      style={{
+                        fontFamily: '"Pratico Variable", sans-serif',
+                        fontSize: '48px',
+                        fontWeight: 600,
+                        lineHeight: '1.25',
+                      }}
+                    >
+                      0Touch Gesture Engine
+                    </h2>
+                    <div
+                      className="image-with-text__text rte text-body !my-6 text-[#27272a]/80"
+                      style={{
+                        fontSize: '24px',
+                        lineHeight: '115%',
+                      }}
+                    >
+                      <p>
+                        Engineered for precise two-handed spatial gestures, providing sterile gesture control across CT, MR, X-Ray Cine, and Ultrasound imaging workspaces.
+                      </p>
+                    </div>
+                    <Link
+                      to="/features"
+                      className="loz-button loz-button-secondary"
+                    >
+                      EXPLORE GESTURES
+                      <span className="relative -top-[0.15rem]">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="16" width="10" viewBox="0 0 320 512">
+                          <path d="M317.3 256l-22.6 22.6-192 192L80 493.3 34.7 448l22.6-22.6L226.7 256 57.4 86.6 34.7 64 80 18.7l22.6 22.6 192 192L317.3 256z" />
+                        </svg>
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Media Item (order-1 md:order-2) */}
+                <div className="image-with-text__media-item flex justify-center order-1 md:order-2">
+                  <div className="image-with-text__media w-[50%] sm:w-[55%] md:w-[65%] max-w-[340px] mx-auto">
+                    <img
+                      src="/benefit_two.webp"
+                      alt="0Touch Gesture Engine"
+                      className="w-full h-auto object-contain"
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 7. FOOTER / NEWSLETTER SECTION */}
+      <footer className="footer bg-[#18181b] px-8 pt-12 md:pt-16 pb-8 md:pb-10 text-white w-full">
+        <div className="footer__content-top page-width !p-0 max-w-6xl mx-auto flex flex-col items-center text-center">
+          <div className="newsletter--wrapper flex flex-col justify-center items-center gap-y-8 w-full">
+            <div className="footer-block__newsletter flex flex-col justify-center mx-auto max-w-xl">
+              <h2
+                className="footer-block__heading inline-richtext text-white mb-4 text-center"
+                style={{
+                  fontFamily: '"Pratico Variable", sans-serif',
+                  fontSize: '36px',
+                  fontWeight: 600,
+                }}
+              >
+                Stay connected with <strong>0Touch</strong>.
+              </h2>
+              <p className="text-zinc-400 text-sm md:text-base mb-6 text-center">
+                Follow the development of 0Touch, explore new capabilities and stay informed about upcoming improvements.
+              </p>
+
+              <form onSubmit={handleSubscribe} className="newsletter-form__field-wrapper w-full flex items-center border-2 border-white rounded-full overflow-hidden bg-white/10 p-1">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Your email address"
+                  className="field__input placeholder-slate-400 w-full bg-transparent px-6 py-3 text-white text-base focus:outline-none"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                />
+                <button
+                  type="submit"
+                  className="loz-button loz-button-primary !py-2.5 !px-6 whitespace-nowrap text-xs md:text-sm"
+                >
+                  {subscribed ? 'UPDATED!' : 'GET UPDATES'}
+                </button>
+              </form>
+            </div>
+
+            {/* Giant Footer 0Touch Wordmark */}
+            <div className="w-full flex justify-center mt-2 select-none">
+              <span
+                style={{
+                  fontFamily: '"Pratico Variable", sans-serif',
+                  fontSize: 'clamp(48px, 12vw, 140px)',
+                  fontWeight: 900,
+                }}
+                className="text-white uppercase tracking-tighter leading-none block"
+              >
+                0Touch
+              </span>
+            </div>
+
+            {/* Footer Navigation Links */}
+            <div className="flex flex-wrap justify-center gap-8 text-sm font-bold uppercase tracking-wider text-zinc-400 mt-2">
+              <Link to="/" className="hover:text-white">Home</Link>
+              <Link to="/features" className="hover:text-white">Product</Link>
+              <Link to="/docs" className="hover:text-white">Docs</Link>
+              <Link to="/contact" className="hover:text-white">Contact</Link>
+              <Link to="/viewer" className="hover:text-[#ff8066]">Launch</Link>
+            </div>
+
+            <p className="text-xs text-zinc-500 mt-2">
+              © 2026 0Touch. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+
+    </main>
+  );
+};

@@ -1,0 +1,214 @@
+@font-face {
+  font-family: "Pratico Variable";
+  src: url("/PraticoVariable.woff2") format("woff2-variations");
+  font-weight: 200 900;
+  font-stretch: 20% 200%;
+  font-optical-sizing: 0 100;
+  font-style: oblique 0deg 8deg;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #27272a;
+    background-color: #f3f4fb;
+    overflow-x: hidden;
+  }
+
+  h0, .h0 {
+    font-family: "Pratico Variable", sans-serif;
+    font-size: 78px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  @media only screen and (min-width: 750px) {
+    h0, .h0 {
+      font-size: 78px;
+    }
+  }
+
+  @media only screen and (min-width: 991px) {
+    h0, .h0 {
+      font-size: 98px;
+    }
+  }
+
+  h1, .h1 {
+    font-family: "Pratico Variable", sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  @media screen and (min-width: 750px) {
+    h1, .h1 {
+      font-size: 56px;
+      line-height: 1.25;
+    }
+  }
+
+  h2, .h2 {
+    font-family: "Pratico Variable", sans-serif;
+    font-size: 36px;
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  @media screen and (min-width: 750px) {
+    h2, .h2 {
+      font-size: 48px;
+      line-height: 1.0;
+    }
+  }
+
+  h3, .h3 {
+    font-family: "Pratico Variable", sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  @media screen and (min-width: 750px) {
+    h3, .h3 {
+      font-size: 40px;
+      line-height: 1.0;
+    }
+  }
+}
+
+/* Exact Loz Keyframes cycle for 4 words */
+@keyframes cycle {
+  0% { top: 0px; }
+  18% { top: 0px; }
+  25% { top: -115px; }
+  43% { top: -115px; }
+  50% { top: -230px; }
+  68% { top: -230px; }
+  75% { top: -345px; }
+  93% { top: -345px; }
+  100% { top: 0px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cycle-slider {
+    animation: none !important;
+  }
+}
+
+.cycle-slider {
+  display: block;
+  position: relative;
+  animation: cycle 10s ease 0s infinite normal none running;
+  animation-timing-function: cubic-bezier(1, -0.3, 0, 1.3) !important;
+}
+
+.cycle-slider li {
+  height: 115px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Exact Loz Marquee */
+.marquee-container {
+  position: relative;
+  width: 100vw;
+  max-width: 100%;
+  height: 170px;
+  overflow-x: hidden;
+}
+
+@media screen and (min-width: 768px) {
+  .marquee-container {
+    height: 200px;
+  }
+}
+
+.marquee {
+  position: absolute;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee 22s linear infinite;
+}
+
+.marquee-content {
+  color: #6f7bd4;
+  font-family: "Pratico Variable", sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 100%;
+  letter-spacing: .025em;
+}
+
+@media screen and (min-width: 768px) {
+  .marquee-content {
+    font-size: 78px;
+  }
+}
+
+@media screen and (min-width: 991px) {
+  .marquee-content {
+    font-size: 96px;
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translate(0); }
+  to { transform: translate(-50%); }
+}
+
+/* Exact Loz Buttons (.button, .button--primary, .button--secondary) */
+.loz-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: .8rem 2.2rem .625rem;
+  cursor: pointer;
+  font-family: "Pratico Variable", sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 150%;
+  text-decoration: none;
+  border-radius: 100px !important;
+  min-height: auto;
+  transition: all 0.2s linear;
+}
+
+.loz-button-primary {
+  background-color: #ffa694;
+  color: #27272a;
+  border: 2px solid #27272a !important;
+}
+
+.loz-button-primary:hover {
+  background-color: #ffffff !important;
+  color: #27272a;
+}
+
+.loz-button-secondary {
+  background-color: #ffffff;
+  color: #27272a;
+  border: 2px solid #27272a !important;
+  gap: 0.625rem;
+}
+
+.loz-button-secondary:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+.loz-button-secondary:hover svg {
+  fill: #ffffff !important;
+  transform: translateX(0.5rem);
+}
+
+.loz-button-secondary svg {
+  fill: #27272a;
+  transition: all 0.3s linear;
+}

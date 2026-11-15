@@ -7,3 +7,13 @@ __pycache__/
 *.log
 .env
 .vscode/
+
+# Build artifacts & dependencies
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Scraped reference material
+page_content/
+page_content_product/
+
