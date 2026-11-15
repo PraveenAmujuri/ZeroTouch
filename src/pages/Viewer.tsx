@@ -1,116 +1,382 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Upload,
-  FileCheck,
   Video,
   Layers,
   ZoomIn,
-  ZoomOut,
   Sliders,
   Move,
   RotateCcw,
-  Camera,
-  CheckCircle,
-  AlertCircle
+  AlertCircle,
+  VideoOff,
+  Sun,
+  Activity
 } from 'lucide-react';
+import { parseDICOMBuffer, DICOMStudyMeta } from '../utils/dicomLoader';
+import {
+  GestureController,
+  GestureDebugInfo,
+  GestureActionEvent,
+  OperationMode,
+  FingerStates,
+} from '../gestures';
+
+const PRESET_WINDOWS: Record<string, { wc: number; ww: number }> = {
+  'DEFAULT / NATIVE': { wc: 128, ww: 256 },
+  'HIGH CONTRAST': { wc: 100, ww: 150 },
+  'BRIGHT GAIN': { wc: 160, ww: 200 },
+  'BONE (CT)': { wc: 300, ww: 1500 },
+  'SOFT TISSUE': { wc: 40, ww: 400 },
+  'LUNG': { wc: -600, ww: 1500 },
+};
+
+const PRESET_LIST = Object.keys(PRESET_WINDOWS);
 
 export const Viewer: React.FC = () => {
-  // DICOM Viewer State
+  // DICOM Study state
+  const [studyMeta, setStudyMeta] = useState<DICOMStudyMeta | null>(null);
   const [currentFile, setCurrentFile] = useState<string>('0003.dcm');
-  const [patientName, setPatientName] = useState<string>('Rubo DEMO (Biplane Angio)');
-  const [modality, setModality] = useState<string>('XA (Angiography)');
-  const [totalSlices, setTotalSlices] = useState<number>(17);
-  const [currentSlice, setCurrentSlice] = useState<number>(1);
+  const [currentSlice, setCurrentSlice] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
-  const [currentPreset, setCurrentPreset] = useState<string>('NATIVE / DEFAULT');
   const [panPos, setPanPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [previewSrc, setPreviewSrc] = useState<string>('/sample_angio.png');
-  const [uploadStatus, setUploadStatus] = useState<string>('Ready • Loaded Sample 0003.dcm');
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [activeMode, setActiveMode] = useState<string>('SLICE_NAV');
+  const [activePresetIndex, setActivePresetIndex] = useState<number>(0);
+  const [windowCenter, setWindowCenter] = useState<number>(128);
+  const [windowWidth, setWindowWidth] = useState<number>(256);
+  const [isInverted, setIsInverted] = useState<boolean>(false);
+  const [statusMessage, setStatusMessage] = useState<string>('Initializing viewer...');
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Gesture Engine state
+  const [isGestureEnabled, setIsGestureEnabled] = useState<boolean>(false);
+  const [isCameraReady, setIsCameraReady] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [gestureDebug, setGestureDebug] = useState<GestureDebugInfo | null>(null);
+  const [leftHand, setLeftHand] = useState<FingerStates | null>(null);
+  const [rightHand, setRightHand] = useState<FingerStates | null>(null);
+  const [activeGestureMode, setActiveGestureMode] = useState<OperationMode>(OperationMode.SLICE_NAV);
+  const [gestureFps, setGestureFps] = useState<number>(0);
 
-  const presets = ['NATIVE / DEFAULT', 'HIGH CONTRAST', 'BRIGHT GAIN', 'BONE', 'SOFT TISSUE', 'LUNG'];
+  // DOM Refs
+  const dicomCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
+  const gestureControllerRef = useRef<GestureController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Handle Loading sample file 0003.dcm
-  const handleLoadSample0003 = () => {
-    setCurrentFile('0003.dcm');
-    setPatientName('Rubo DEMO (Clinical Biplane)');
-    setModality('XA (Angiography Multi-frame)');
-    setTotalSlices(17);
-    setCurrentSlice(1);
-    setZoomLevel(1.0);
-    setCurrentPreset('NATIVE / DEFAULT');
-    setPanPos({ x: 0, y: 0 });
-    setPreviewSrc('/sample_angio.png');
-    setUploadStatus('Loaded clinical sample 0003.dcm (17 frames)');
-  };
+  // Mouse interaction state for manual viewport drag
+  const isMouseDownRef = useRef<boolean>(false);
+  const mouseStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Handle Loading sample file 0020.dcm (Echo ultrasound)
-  const handleLoadSample0020 = () => {
-    setCurrentFile('0020.DCM');
-    setPatientName('Rubo DEMO (Echocardiogram)');
-    setModality('US (Ultrasound Cine PALETTE COLOR)');
-    setTotalSlices(11);
-    setCurrentSlice(1);
-    setZoomLevel(1.0);
-    setCurrentPreset('DEFAULT / NATIVE');
-    setPanPos({ x: 0, y: 0 });
-    setPreviewSrc('/sample_echo.png');
-    setUploadStatus('Loaded clinical sample 0020.DCM (11 frames)');
-  };
+  // 1. Render Active Frame to Canvas
+  const renderCurrentFrame = useCallback(() => {
+    if (!studyMeta || !dicomCanvasRef.current) return;
+    const frameIdx = Math.max(0, Math.min(studyMeta.frames.length - 1, currentSlice));
+    const frame = studyMeta.frames[frameIdx];
+    if (frame) {
+      frame.renderToCanvas(dicomCanvasRef.current, windowCenter, windowWidth, isInverted);
+    }
+  }, [studyMeta, currentSlice, windowCenter, windowWidth, isInverted]);
 
-  // Handle Loading sample MRBRAIN
-  const handleLoadSampleMR = () => {
-    setCurrentFile('MRBRAIN.DCM');
-    setPatientName('MR/BRAIN/GRASE/1024');
-    setModality('MR (Brain Axial Scan)');
-    setTotalSlices(1);
-    setCurrentSlice(1);
-    setZoomLevel(1.0);
-    setCurrentPreset('HIGH CONTRAST');
-    setPanPos({ x: 0, y: 0 });
-    setPreviewSrc('/sample_mrbrain.png');
-    setUploadStatus('Loaded clinical sample MRBRAIN.DCM');
-  };
+  useEffect(() => {
+    renderCurrentFrame();
+  }, [renderCurrentFrame]);
 
-  // Handle custom file upload or drop
-  const handleFile = (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.dcm') && !file.name.toLowerCase().endsWith('.dicom')) {
-      setUploadStatus(`Warning: ${file.name} is not a standard .dcm extension, but loaded for staging.`);
+  // 2. Load DICOM file from URL
+  const loadDicomFromUrl = useCallback(async (url: string, displayName: string) => {
+    try {
+      setStatusMessage(`Loading ${displayName}...`);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch ${url}`);
+      const arrayBuffer = await response.arrayBuffer();
+      const meta = parseDICOMBuffer(arrayBuffer, displayName);
+
+      setStudyMeta(meta);
+      setCurrentFile(displayName);
+      setCurrentSlice(0);
+      setZoomLevel(1.0);
+      setPanPos({ x: 0, y: 0 });
+      setWindowCenter(meta.frames[0]?.windowCenter || 128);
+      setWindowWidth(meta.frames[0]?.windowWidth || 256);
+      setStatusMessage(`Loaded ${displayName} (${meta.numberOfFrames} frame${meta.numberOfFrames > 1 ? 's' : ''})`);
+    } catch (err: any) {
+      console.error('Failed to load DICOM:', err);
+      setStatusMessage(`Error loading ${displayName}: ${err.message}`);
+    }
+  }, []);
+
+  // Initial load: 0003.dcm
+  useEffect(() => {
+    loadDicomFromUrl('/0003.dcm', '0003.dcm');
+  }, [loadDicomFromUrl]);
+
+  // 3. User Upload Handler (Single or Multi-file series)
+  const handleFileUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1) {
+      const file = files[0];
+      try {
+        setStatusMessage(`Reading ${file.name}...`);
+        const buffer = await file.arrayBuffer();
+        const meta = parseDICOMBuffer(buffer, file.name);
+        setStudyMeta(meta);
+        setCurrentFile(file.name);
+        setCurrentSlice(0);
+        setZoomLevel(1.0);
+        setPanPos({ x: 0, y: 0 });
+        setWindowCenter(meta.frames[0]?.windowCenter || 128);
+        setWindowWidth(meta.frames[0]?.windowWidth || 256);
+        setStatusMessage(`Successfully loaded ${file.name} (${meta.numberOfFrames} frames)`);
+      } catch (err: any) {
+        console.error('Error parsing DICOM:', err);
+        setStatusMessage(`Failed to parse ${file.name}: ${err.message}`);
+      }
     } else {
-      setUploadStatus(`Uploaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      // Multiple files belonging to a slice series (e.g. CT/MR volume)
+      try {
+        setStatusMessage(`Reading series of ${files.length} DICOM slices...`);
+        const parsedSlices = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const buf = await file.arrayBuffer();
+          const meta = parseDICOMBuffer(buf, file.name);
+          parsedSlices.push({
+            name: file.name,
+            frame: meta.frames[0],
+            meta,
+          });
+        }
+
+        // Sort by instanceNumber or name
+        parsedSlices.sort((a, b) => a.meta.instanceNumber - b.meta.instanceNumber || a.name.localeCompare(b.name));
+
+        const compositeMeta: DICOMStudyMeta = {
+          patientName: parsedSlices[0].meta.patientName,
+          patientId: parsedSlices[0].meta.patientId,
+          modality: parsedSlices[0].meta.modality,
+          studyDate: parsedSlices[0].meta.studyDate,
+          seriesDescription: `Series (${files.length} slices)`,
+          instanceNumber: 1,
+          rows: parsedSlices[0].meta.rows,
+          columns: parsedSlices[0].meta.columns,
+          numberOfFrames: parsedSlices.length,
+          frames: parsedSlices.map((s) => s.frame),
+        };
+
+        setStudyMeta(compositeMeta);
+        setCurrentFile(`Series: ${files[0].name} + ${files.length - 1} slices`);
+        setCurrentSlice(0);
+        setZoomLevel(1.0);
+        setPanPos({ x: 0, y: 0 });
+        setWindowCenter(compositeMeta.frames[0]?.windowCenter || 128);
+        setWindowWidth(compositeMeta.frames[0]?.windowWidth || 256);
+        setStatusMessage(`Loaded slice series with ${parsedSlices.length} frames.`);
+      } catch (err: any) {
+        console.error('Error parsing slice series:', err);
+        setStatusMessage(`Failed to load series: ${err.message}`);
+      }
     }
-    setCurrentFile(file.name);
-    setPatientName(`Custom Scan: ${file.name}`);
-    setModality('User DICOM File');
-    setTotalSlices(1);
-    setCurrentSlice(1);
-    setZoomLevel(1.0);
+  }, []);
+
+  // 4. Connect Gesture Controller & Event Handlers
+  const handleGestureAction = useCallback(
+    (event: GestureActionEvent) => {
+
+      switch (event.type) {
+        case 'MODE_CHANGED':
+          setActiveGestureMode(event.value);
+          setStatusMessage(`Gesture: Switched to ${event.value} mode`);
+          break;
+
+        case 'SLICE_PREV':
+          setCurrentSlice((prev) => Math.max(0, prev - 1));
+          break;
+
+        case 'SLICE_NEXT':
+          if (studyMeta) {
+            setCurrentSlice((prev) => Math.min(studyMeta.frames.length - 1, prev + 1));
+          }
+          break;
+
+        case 'ZOOM':
+          if (typeof event.value === 'number') {
+            setZoomLevel((prev) => Math.max(0.4, Math.min(6.0, prev + event.value)));
+          }
+          break;
+
+        case 'PAN':
+          if (event.value && typeof event.value.dx === 'number') {
+            setPanPos((prev) => ({
+              x: prev.x + event.value.dx,
+              y: prev.y + (event.value.dy || 0),
+            }));
+          }
+          break;
+
+        case 'WINDOW_CHANGED':
+        case 'NEXT_PRESET': {
+          setActivePresetIndex((prev) => {
+            const nextIdx = (prev + 1) % PRESET_LIST.length;
+            const presetName = PRESET_LIST[nextIdx];
+            const p = PRESET_WINDOWS[presetName];
+            setWindowCenter(p.wc);
+            setWindowWidth(p.ww);
+            setStatusMessage(`Preset: ${presetName}`);
+            return nextIdx;
+          });
+          break;
+        }
+
+        case 'PREV_PRESET': {
+          setActivePresetIndex((prev) => {
+            const nextIdx = (prev - 1 + PRESET_LIST.length) % PRESET_LIST.length;
+            const presetName = PRESET_LIST[nextIdx];
+            const p = PRESET_WINDOWS[presetName];
+            setWindowCenter(p.wc);
+            setWindowWidth(p.ww);
+            setStatusMessage(`Preset: ${presetName}`);
+            return nextIdx;
+          });
+          break;
+        }
+
+        case 'ACTION_STOP':
+          // Cleanly stopped
+          break;
+
+        default:
+          break;
+      }
+    },
+    [studyMeta]
+  );
+
+  // 5. Initialize Gesture Controller
+  useEffect(() => {
+    const controller = new GestureController();
+    gestureControllerRef.current = controller;
+
+    controller.onAction(handleGestureAction);
+
+    controller.onDebug((info) => {
+      setGestureDebug(info);
+      setLeftHand(controller.leftHand);
+      setRightHand(controller.rightHand);
+      setActiveGestureMode(info.mode);
+      setGestureFps(Math.round(controller.currentFps));
+    });
+
+    controller.initialize().catch((err) => {
+      console.error('Failed to initialize gesture engine:', err);
+      setCameraError('Failed to load MediaPipe Tasks Vision model');
+    });
+
+    return () => {
+      controller.stop();
+    };
+  }, [handleGestureAction]);
+
+  // Toggle Webcam Gesture Tracking
+  const toggleGestureControl = async () => {
+    if (!isGestureEnabled) {
+      try {
+        setCameraError(null);
+        setIsGestureEnabled(true);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          audio: false,
+        });
+
+        // Use requestAnimationFrame / timeout to guarantee DOM video element is mounted and accessible
+        setTimeout(async () => {
+          if (webcamVideoRef.current && gestureControllerRef.current) {
+            webcamVideoRef.current.srcObject = stream;
+            await webcamVideoRef.current.play();
+            gestureControllerRef.current.start(webcamVideoRef.current);
+            setIsCameraReady(true);
+            setStatusMessage('Gesture Engine ACTIVE • Ready for chest-level gestures');
+          }
+        }, 100);
+      } catch (err: any) {
+        console.error('Camera access error:', err);
+        setCameraError('Webcam permission denied or camera not available');
+        setIsGestureEnabled(false);
+        setIsCameraReady(false);
+      }
+    } else {
+      if (gestureControllerRef.current) {
+        gestureControllerRef.current.stop();
+      }
+      if (webcamVideoRef.current && webcamVideoRef.current.srcObject) {
+        const s = webcamVideoRef.current.srcObject as MediaStream;
+        s.getTracks().forEach((t) => t.stop());
+        webcamVideoRef.current.srcObject = null;
+      }
+      setIsCameraReady(false);
+      setIsGestureEnabled(false);
+      setStatusMessage('Gesture Engine Stopped');
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  // Keyboard Navigation Fallback
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        setCurrentSlice((prev) => Math.max(0, prev - 1));
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (studyMeta) {
+          setCurrentSlice((prev) => Math.min(studyMeta.frames.length - 1, prev + 1));
+        }
+      } else if (e.key === '+' || e.key === '=') {
+        setZoomLevel((prev) => Math.min(6.0, prev + 0.1));
+      } else if (e.key === '-' || e.key === '_') {
+        setZoomLevel((prev) => Math.max(0.4, prev - 0.1));
+      } else if (e.key === 'r' || e.key === 'R') {
+        setZoomLevel(1.0);
+        setPanPos({ x: 0, y: 0 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [studyMeta]);
+
+  // Mouse drag fallback for viewport panning
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isMouseDownRef.current = true;
+    mouseStartRef.current = { x: e.clientX - panPos.x, y: e.clientY - panPos.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDownRef.current) return;
+    setPanPos({
+      x: e.clientX - mouseStartRef.current.x,
+      y: e.clientY - mouseStartRef.current.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    isMouseDownRef.current = false;
+  };
+
+  // Mouse wheel fallback for zoom
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    setZoomLevel((prev) => Math.max(0.4, Math.min(6.0, prev + delta)));
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-secondary-500">
-      
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans select-none">
       {/* 1. TOP MEDICAL APP HEADER BAR */}
-      <header className="h-16 bg-zinc-900 border-b-2 border-zinc-800 px-4 sm:px-6 flex items-center justify-between z-20">
-        
-        {/* Left: Back to Marketing site & Workspace Name */}
+      <header className="h-16 bg-[#121217] border-b border-white/10 px-4 sm:px-6 flex items-center justify-between z-20">
+        {/* Left: Back to Home & Brand */}
         <div className="flex items-center gap-4">
           <Link
             to="/"
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 transition-colors"
+            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-white px-3 py-1.5 border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Main Website</span>
@@ -119,32 +385,39 @@ export const Viewer: React.FC = () => {
           <div className="h-5 w-px bg-zinc-700 hidden sm:block" />
 
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-display font-black text-sm tracking-tight text-white uppercase">
-              ZeroTouch <span className="text-secondary-400">Workspace</span>
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                isGestureEnabled && isCameraReady ? 'bg-emerald-400 animate-pulse' : 'bg-orange-500'
+              }`}
+            />
+            <span className="font-extrabold text-sm tracking-tight text-white uppercase font-pratico">
+              0Touch <span className="text-orange-500">Workspace</span>
             </span>
-            <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 border border-zinc-700 rounded">
-              v2.4 OR-Ready
+            <span className="text-[10px] font-mono bg-zinc-800/80 text-zinc-400 px-2 py-0.5 border border-zinc-700 rounded">
+              Browser DICOM
             </span>
           </div>
         </div>
 
-        {/* Center: Active Gesture Mode Badges */}
+        {/* Center: Active Gesture Mode Indicators */}
         <div className="hidden lg:flex items-center gap-2 font-mono text-xs">
           <span className="text-zinc-500 font-bold uppercase text-[10px] mr-1">Gesture Mode:</span>
           {[
-            { id: 'SLICE_NAV', label: '1+1: SLICE', icon: <Layers className="w-3.5 h-3.5" /> },
-            { id: 'ZOOM', label: '2+2: ZOOM', icon: <ZoomIn className="w-3.5 h-3.5" /> },
-            { id: 'WINDOWING', label: '3+3: WINDOW', icon: <Sliders className="w-3.5 h-3.5" /> },
-            { id: 'PANNING', label: '4+4: PAN', icon: <Move className="w-3.5 h-3.5" /> },
+            { id: OperationMode.SLICE_NAV, label: '1+1: SLICE', icon: <Layers className="w-3.5 h-3.5" /> },
+            { id: OperationMode.ZOOM, label: '2+2: ZOOM', icon: <ZoomIn className="w-3.5 h-3.5" /> },
+            { id: OperationMode.WINDOWING, label: '3+3: WINDOW', icon: <Sliders className="w-3.5 h-3.5" /> },
+            { id: OperationMode.PANNING, label: '4+4: PAN', icon: <Move className="w-3.5 h-3.5" /> },
           ].map((m) => (
             <button
               key={m.id}
-              onClick={() => setActiveMode(m.id)}
-              className={`px-2.5 py-1 flex items-center gap-1.5 border text-xs font-bold transition-all ${
-                activeMode === m.id
-                  ? 'bg-secondary-500 border-zinc-900 text-zinc-950 shadow-[2px_2px_0px_#fff]'
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+              onClick={() => {
+                setActiveGestureMode(m.id);
+                gestureControllerRef.current?.setMode(m.id);
+              }}
+              className={`px-2.5 py-1 flex items-center gap-1.5 border text-xs font-bold transition-all rounded ${
+                activeGestureMode === m.id
+                  ? 'bg-orange-500 border-orange-400 text-white shadow-md shadow-orange-500/20'
+                  : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:bg-zinc-700/60'
               }`}
             >
               {m.icon}
@@ -153,395 +426,346 @@ export const Viewer: React.FC = () => {
           ))}
         </div>
 
-        {/* Right: Camera / CV connection indicator */}
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/90 border border-zinc-700 rounded text-emerald-400">
-            <Camera className="w-3.5 h-3.5" />
-            <span className="font-bold hidden sm:inline">Camera: READY (30 FPS)</span>
+        {/* Right: Gesture Toggle & Tester link */}
+        <div className="flex items-center gap-3">
+          <Link
+            to="/gestures-test"
+            className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded bg-orange-500/10 border border-orange-500/30"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Testbed</span>
+          </Link>
+
+          <button
+            onClick={toggleGestureControl}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
+              isGestureEnabled
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                : 'bg-orange-500 hover:bg-orange-600 text-white'
+            }`}
+          >
+            {isGestureEnabled ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+            <span>{isGestureEnabled ? 'Gestures Active' : 'Enable Gestures'}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* 2. SUB-HEADER METADATA STRIP */}
+      <div className="bg-[#18181f] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div>
+            <span className="text-zinc-500 mr-1.5">PATIENT:</span>
+            <span className="text-white font-bold">{studyMeta?.patientName || 'ANONYMOUS'}</span>
+          </div>
+          <div>
+            <span className="text-zinc-500 mr-1.5">MODALITY:</span>
+            <span className="text-orange-400 font-bold">{studyMeta?.modality || 'OT'}</span>
+          </div>
+          <div>
+            <span className="text-zinc-500 mr-1.5">STUDY:</span>
+            <span className="text-zinc-300">{currentFile}</span>
           </div>
         </div>
 
-      </header>
+        <div className="flex items-center gap-4 flex-wrap text-zinc-400">
+          <div>
+            <span className="text-zinc-500 mr-1">SLICE:</span>
+            <span className="text-white font-bold">
+              {studyMeta ? `${currentSlice + 1} / ${studyMeta.numberOfFrames}` : '1 / 1'}
+            </span>
+          </div>
+          <div>
+            <span className="text-zinc-500 mr-1">ZOOM:</span>
+            <span className="text-white">{zoomLevel.toFixed(2)}x</span>
+          </div>
+          <div>
+            <span className="text-zinc-500 mr-1">WINDOW:</span>
+            <span className="text-white">
+              C:{Math.round(windowCenter)} W:{Math.round(windowWidth)}
+            </span>
+          </div>
+          <div className="text-emerald-400 font-semibold">{statusMessage}</div>
+        </div>
+      </div>
 
+      {/* 3. MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Left Sidebar: Controls & Sample Studies */}
+        <aside className="w-full md:w-64 bg-[#121217] border-r border-white/10 p-4 flex flex-col gap-5 overflow-y-auto shrink-0">
+          {/* Sample Studies Selector */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+              Sample DICOM Studies
+            </span>
+            <div className="space-y-1.5">
+              <button
+                onClick={() => loadDicomFromUrl('/0003.dcm', '0003.dcm')}
+                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
+                  currentFile.includes('0003')
+                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
+                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                <span>0003.DCM (Angio 17f)</span>
+                <span className="text-[10px] opacity-60">XA</span>
+              </button>
 
-      {/* 2. MAIN WORKSPACE VIEWPORT GRID */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
-        
-        {/* Left Side: Medical Controls, File Uploader & Sample Picker */}
-        <div className="lg:col-span-3 bg-zinc-900/90 border-r-2 border-zinc-800 p-5 flex flex-col gap-5 overflow-y-auto">
-          
-          {/* DICOM File Upload & Drag-and-Drop Dropzone */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center justify-between">
-              <span>DICOM Ingestion</span>
-              <span className="text-[10px] text-zinc-500 font-mono">.dcm / .dicom</span>
-            </label>
+              <button
+                onClick={() => loadDicomFromUrl('/0020.DCM', '0020.DCM')}
+                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
+                  currentFile.includes('0020')
+                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
+                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                <span>0020.DCM (Echo Cine)</span>
+                <span className="text-[10px] opacity-60">US</span>
+              </button>
 
+              <button
+                onClick={() => loadDicomFromUrl('/MRBRAIN.DCM', 'MRBRAIN.DCM')}
+                className={`w-full text-left px-3 py-2 rounded text-xs font-mono transition-all flex items-center justify-between border ${
+                  currentFile.includes('MRBRAIN')
+                    ? 'bg-orange-500/20 border-orange-500/40 text-orange-300 font-bold'
+                    : 'bg-zinc-800/40 border-zinc-700/40 text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                <span>MRBRAIN.DCM</span>
+                <span className="text-[10px] opacity-60">MR</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Upload Dropzone */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+              Load Custom DICOM
+            </span>
             <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(true);
+              }}
+              onDragLeave={() => setIsDraggingFile(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+                handleFileUpload(e.dataTransfer.files);
+              }}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors flex flex-col items-center gap-2 ${
-                isDragging
-                  ? 'border-secondary-500 bg-secondary-500/10'
-                  : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500 hover:bg-zinc-800'
+              className={`p-4 rounded-lg border-2 border-dashed text-center cursor-pointer transition-all ${
+                isDraggingFile
+                  ? 'border-orange-500 bg-orange-500/10'
+                  : 'border-zinc-700 bg-zinc-800/30 hover:border-zinc-500'
               }`}
             >
-              <Upload className="w-7 h-7 text-secondary-400 animate-pulse" />
-              <div className="text-xs font-bold text-zinc-200">
-                Drop DICOM scan here
-              </div>
-              <div className="text-[10px] text-zinc-500">
-                or click to browse local files
-              </div>
+              <Upload className="w-5 h-5 mx-auto text-zinc-400 mb-1" />
+              <p className="text-xs text-zinc-300 font-semibold">Drop .DCM or Series</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">Supports multi-slice sets</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".dcm,.dicom"
+                multiple
+                accept=".dcm,.dicom,application/dicom"
                 className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleFile(e.target.files[0]);
-                  }
-                }}
+                onChange={(e) => handleFileUpload(e.target.files)}
               />
             </div>
           </div>
 
-          {/* Sample Files Selector */}
-          <div className="flex flex-col gap-2">
-            <div className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-              <FileCheck className="w-3.5 h-3.5 text-tertiary-400" />
-              <span>Bundled Clinical Scans</span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleLoadSample0003}
-                className={`p-3 text-left border text-xs font-mono transition-all flex flex-col gap-1 ${
-                  currentFile === '0003.dcm'
-                    ? 'bg-zinc-800 border-secondary-500 text-white shadow-sm'
-                    : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-secondary-400">0003.dcm</span>
-                  <span className="text-[10px] bg-zinc-700 px-1.5 py-0.5 rounded text-white">XA Angio</span>
-                </div>
-                <div className="text-[11px] text-zinc-400">17 frames • 512×512 • 8-bit</div>
-              </button>
-
-              <button
-                onClick={handleLoadSample0020}
-                className={`p-3 text-left border text-xs font-mono transition-all flex flex-col gap-1 ${
-                  currentFile === '0020.DCM'
-                    ? 'bg-zinc-800 border-secondary-500 text-white shadow-sm'
-                    : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-tertiary-400">0020.DCM</span>
-                  <span className="text-[10px] bg-zinc-700 px-1.5 py-0.5 rounded text-white">US Echo</span>
-                </div>
-                <div className="text-[11px] text-zinc-400">11 frames • 430×600 • Palette Color</div>
-              </button>
-
-              <button
-                onClick={handleLoadSampleMR}
-                className={`p-3 text-left border text-xs font-mono transition-all flex flex-col gap-1 ${
-                  currentFile === 'MRBRAIN.DCM'
-                    ? 'bg-zinc-800 border-secondary-500 text-white shadow-sm'
-                    : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary-300">MRBRAIN.DCM</span>
-                  <span className="text-[10px] bg-zinc-700 px-1.5 py-0.5 rounded text-white">MR Brain</span>
-                </div>
-                <div className="text-[11px] text-zinc-400">1 slice • 512×512 • 12-bit uint16</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Interactive Inspection Toolbars (Slice, Zoom, Windowing, Pan) */}
-          <div className="flex flex-col gap-3 pt-2 border-t border-zinc-800">
-            <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
-              Interactive Tools
+          {/* Presets & Contrast */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+              Viewing Presets
             </span>
-
-            {/* Slice Stepper */}
-            <div className="bg-zinc-800/60 border border-zinc-700 p-3 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-zinc-300">Slice Index:</span>
-                <span className="font-mono text-secondary-400 font-bold">{currentSlice} / {totalSlices}</span>
-              </div>
-              <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
+              {PRESET_LIST.map((preset, idx) => (
                 <button
-                  disabled={currentSlice <= 1}
-                  onClick={() => setCurrentSlice(prev => Math.max(1, prev - 1))}
-                  className="flex-1 py-1.5 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-xs font-mono font-bold"
+                  key={preset}
+                  onClick={() => {
+                    setActivePresetIndex(idx);
+                    const p = PRESET_WINDOWS[preset];
+                    setWindowCenter(p.wc);
+                    setWindowWidth(p.ww);
+                  }}
+                  className={`px-2 py-1.5 rounded text-[10px] font-mono transition-all text-left border ${
+                    activePresetIndex === idx
+                      ? 'bg-orange-500 text-white border-orange-400 font-bold'
+                      : 'bg-zinc-800/50 text-zinc-400 border-zinc-700/60 hover:text-white'
+                  }`}
                 >
-                  ◀ Prev
+                  {preset.replace(' (CT)', '')}
                 </button>
-                <button
-                  disabled={currentSlice >= totalSlices}
-                  onClick={() => setCurrentSlice(prev => Math.min(totalSlices, prev + 1))}
-                  className="flex-1 py-1.5 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-xs font-mono font-bold"
-                >
-                  Next ▶
-                </button>
-              </div>
+              ))}
             </div>
 
-            {/* Zoom Stepper */}
-            <div className="bg-zinc-800/60 border border-zinc-700 p-3 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-zinc-300">Zoom Scale:</span>
-                <span className="font-mono text-secondary-400 font-bold">{zoomLevel.toFixed(2)}x</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.2).toFixed(2))))}
-                  className="flex-1 py-1.5 bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center gap-1 text-xs font-mono font-bold"
-                >
-                  <ZoomOut className="w-3.5 h-3.5" />
-                  <span>Out</span>
-                </button>
-                <button
-                  onClick={() => setZoomLevel(prev => Math.min(3.5, Number((prev + 0.2).toFixed(2))))}
-                  className="flex-1 py-1.5 bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center gap-1 text-xs font-mono font-bold"
-                >
-                  <ZoomIn className="w-3.5 h-3.5" />
-                  <span>In</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Windowing Presets */}
-            <div className="bg-zinc-800/60 border border-zinc-700 p-3 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-zinc-300">Window Preset:</span>
-                <span className="font-mono text-tertiary-400 font-bold text-[11px] truncate">{currentPreset}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {presets.slice(0, 4).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentPreset(p)}
-                    className={`py-1 px-2 text-[10px] font-mono font-bold border truncate ${
-                      currentPreset === p
-                        ? 'bg-tertiary-400 text-zinc-950 border-white'
-                        : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Panning 4-way step buttons */}
-            <div className="bg-zinc-800/60 border border-zinc-700 p-3 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-zinc-300">Step Panning:</span>
-                <span className="font-mono text-zinc-400 text-[11px]">({panPos.x}, {panPos.y}) px</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 w-full max-w-[180px] mx-auto text-center font-mono text-xs">
-                <div />
-                <button
-                  onClick={() => setPanPos(p => ({ ...p, y: p.y - 25 }))}
-                  className="bg-zinc-700 hover:bg-zinc-600 p-1.5 font-bold"
-                >
-                  ▲
-                </button>
-                <div />
-                <button
-                  onClick={() => setPanPos(p => ({ ...p, x: p.x - 25 }))}
-                  className="bg-zinc-700 hover:bg-zinc-600 p-1.5 font-bold"
-                >
-                  ◀
-                </button>
-                <button
-                  onClick={() => setPanPos({ x: 0, y: 0 })}
-                  className="bg-zinc-800 hover:bg-zinc-700 p-1.5 text-[10px] font-bold text-zinc-400"
-                >
-                  RST
-                </button>
-                <button
-                  onClick={() => setPanPos(p => ({ ...p, x: p.x + 25 }))}
-                  className="bg-zinc-700 hover:bg-zinc-600 p-1.5 font-bold"
-                >
-                  ▶
-                </button>
-                <div />
-                <button
-                  onClick={() => setPanPos(p => ({ ...p, y: p.y + 25 }))}
-                  className="bg-zinc-700 hover:bg-zinc-600 p-1.5 font-bold"
-                >
-                  ▼
-                </button>
-                <div />
-              </div>
-            </div>
-
-            {/* Reset Viewport */}
             <button
-              onClick={() => {
-                setZoomLevel(1.0);
-                setPanPos({ x: 0, y: 0 });
-                setCurrentPreset('NATIVE / DEFAULT');
-                setCurrentSlice(1);
-              }}
-              className="py-2 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-xs font-mono font-bold flex items-center justify-center gap-1.5 text-zinc-300"
+              onClick={() => setIsInverted((prev) => !prev)}
+              className={`w-full mt-2 px-3 py-1.5 rounded text-xs font-mono flex items-center justify-center gap-1.5 border transition-all ${
+                isInverted
+                  ? 'bg-orange-500/20 border-orange-500 text-orange-400 font-bold'
+                  : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+              }`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Viewport</span>
+              <Sun className="w-3.5 h-3.5" />
+              <span>Invert Grayscale ({isInverted ? 'ON' : 'OFF'})</span>
             </button>
           </div>
 
-        </div>
+          {/* Reset Viewport */}
+          <button
+            onClick={() => {
+              setZoomLevel(1.0);
+              setPanPos({ x: 0, y: 0 });
+            }}
+            className="w-full px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-mono flex items-center justify-center gap-2 text-zinc-300 hover:text-white transition-all mt-auto"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Viewport</span>
+          </button>
+        </aside>
 
+        {/* Center: Viewport */}
+        <main
+          className="flex-1 bg-black relative flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+        >
+          {/* DICOM Render Canvas */}
+          <canvas
+            ref={dicomCanvasRef}
+            style={{
+              transform: `translate(${panPos.x}px, ${panPos.y}px) scale(${zoomLevel})`,
+              transformOrigin: 'center center',
+              transition: isMouseDownRef.current ? 'none' : 'transform 0.05s ease-out',
+            }}
+            className="max-w-full max-h-full object-contain pointer-events-none"
+          />
 
-        {/* Central Viewport & Telemetry HUD */}
-        <div className="lg:col-span-6 bg-black relative flex flex-col justify-between p-4 overflow-hidden border-b-2 lg:border-b-0 lg:border-r-2 border-zinc-800">
-          
-          {/* Top Viewport Telemetry Overlay Card */}
-          <div className="z-10 bg-zinc-900/85 border border-zinc-700 p-3 rounded font-mono text-xs max-w-sm backdrop-blur-md">
-            <div className="text-secondary-400 font-bold uppercase tracking-wider text-[11px] mb-1">
-              PATIENT: {patientName}
+          {/* Viewport Overlay HUD (Top-Left) */}
+          <div className="absolute top-4 left-4 font-mono text-xs text-white/70 space-y-1 pointer-events-none bg-black/60 backdrop-blur-sm p-3 rounded-lg border border-white/10">
+            <div>
+              <span className="text-zinc-500">Slice: </span>
+              <span className="text-orange-400 font-bold">
+                {studyMeta ? `${currentSlice + 1} / ${studyMeta.numberOfFrames}` : '1 / 1'}
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-zinc-300 text-[11px]">
-              <div>File: <span className="text-white font-bold">{currentFile}</span></div>
-              <div>Modality: <span className="text-white font-bold">{modality.split(' ')[0]}</span></div>
-              <div>Slice: <span className="text-white font-bold">{currentSlice} / {totalSlices}</span></div>
-              <div>Zoom: <span className="text-white font-bold">{zoomLevel}x</span></div>
-              <div>Preset: <span className="text-tertiary-400 font-bold">{currentPreset}</span></div>
-              <div>Offset: <span className="text-white font-bold">({panPos.x}, {panPos.y})</span></div>
+            <div>
+              <span className="text-zinc-500">Zoom: </span>
+              <span>{zoomLevel.toFixed(2)}x</span>
+            </div>
+            <div>
+              <span className="text-zinc-500">Pan: </span>
+              <span>
+                {Math.round(panPos.x)}, {Math.round(panPos.y)}
+              </span>
+            </div>
+            <div>
+              <span className="text-zinc-500">Preset: </span>
+              <span className="text-emerald-400">{PRESET_LIST[activePresetIndex]}</span>
             </div>
           </div>
 
-          {/* Central Medical Image Canvas Viewport */}
-          <div className="absolute inset-0 flex items-center justify-center p-8 overflow-hidden pointer-events-none">
-            <div
-              style={{
-                transform: `scale(${zoomLevel}) translate(${panPos.x}px, ${panPos.y}px)`,
-                transition: 'transform 0.15s ease-out'
-              }}
-              className="relative max-w-full max-h-full flex items-center justify-center"
-            >
-              <img
-                src={previewSrc}
-                alt="DICOM Viewport Active Render"
-                className="max-h-[520px] w-auto object-contain border border-zinc-800 shadow-[0_0_50px_rgba(0,0,0,0.8)] filter contrast-125"
+          {/* Slice Timeline Navigation Slider (Bottom) */}
+          {studyMeta && studyMeta.numberOfFrames > 1 && (
+            <div className="absolute bottom-4 left-8 right-8 bg-black/70 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center gap-4 z-10">
+              <span className="text-xs font-mono text-zinc-400 shrink-0">Frame:</span>
+              <input
+                type="range"
+                min={0}
+                max={studyMeta.numberOfFrames - 1}
+                value={currentSlice}
+                onChange={(e) => setCurrentSlice(parseInt(e.target.value, 10))}
+                className="flex-1 accent-orange-500 cursor-pointer"
               />
-            </div>
-          </div>
-
-          {/* Bottom Live Gesture Status Toast */}
-          <div className="z-10 flex items-center justify-between bg-zinc-900/90 border border-zinc-800 p-3 rounded text-xs font-mono backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-zinc-300">
-                Active Pose: <strong className="text-white">MATCHING COUNTS</strong> ({activeMode})
+              <span className="text-xs font-mono font-bold text-orange-400 shrink-0">
+                {currentSlice + 1} / {studyMeta.numberOfFrames}
               </span>
             </div>
-            <span className="text-[11px] text-tertiary-400 font-bold">
-              Neutral Release Ready
-            </span>
-          </div>
+          )}
+        </main>
 
-        </div>
-
-
-        {/* Right Side: Camera Mirror & Clinical Study Guidelines */}
-        <div className="lg:col-span-3 bg-zinc-900/90 p-5 flex flex-col gap-5 overflow-y-auto">
-          
-          {/* Simulated Webcam Tracker Card */}
-          <div className="flex flex-col gap-2">
-            <div className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-primary-400" />
-                <span>Webcam Stream</span>
-              </span>
-              <span className="text-[10px] font-mono text-emerald-400">CONNECTED</span>
+        {/* Floating Webcam & Gesture HUD (Bottom-Right / PIP) */}
+        {isGestureEnabled && (
+          <div className="absolute top-4 right-4 z-30 w-72 bg-black/85 backdrop-blur-md rounded-xl border border-white/20 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-3 py-2 bg-white/5 border-b border-white/10 flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-bold text-white">0Touch Gesture Stream</span>
+              </div>
+              <span className="text-zinc-400">{gestureFps} FPS</span>
             </div>
 
-            <div className="relative aspect-video bg-zinc-950 border-2 border-zinc-800 overflow-hidden rounded flex items-center justify-center">
-              {/* Grid overlay */}
-              <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:20px_20px]" />
-              
-              {/* Silhouette hands simulation */}
-              <div className="flex items-center justify-around w-full px-8 text-zinc-600 font-mono text-xs z-10">
-                <div className="border border-zinc-700 bg-zinc-900/80 p-2 text-center rounded">
-                  <div className="text-emerald-400 font-bold">LEFT HAND</div>
-                  <div className="text-[10px]">Tracked (Chest)</div>
+            {/* Hidden Video element running MediaPipe analysis */}
+            <div className="relative aspect-video bg-zinc-900 overflow-hidden">
+              <video
+                ref={webcamVideoRef}
+                playsInline
+                muted
+                className="w-full h-full object-cover -scale-x-100"
+              />
+
+              {/* Status pill on video */}
+              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-mono px-2 py-1 rounded bg-black/70 border border-white/10">
+                <span className="text-orange-400 font-bold truncate">
+                  {gestureDebug?.classifiedGesture || 'WAITING'}
+                </span>
+                <span className="text-zinc-400 shrink-0 ml-1">
+                  {gestureDebug?.trackingStatus || 'SEARCH'}
+                </span>
+              </div>
+            </div>
+
+            {/* Gesture Telemetry Pill */}
+            <div className="p-3 space-y-2 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="p-1.5 rounded bg-blue-500/10 border border-blue-500/20">
+                  <span className="text-[10px] text-blue-400 block font-bold">LEFT HAND</span>
+                  <span className="text-lg font-extrabold text-blue-400">
+                    {leftHand?.extendedCount ?? 0}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 block">{leftHand?.posture ?? 'NONE'}</span>
                 </div>
-                <div className="border border-zinc-700 bg-zinc-900/80 p-2 text-center rounded">
-                  <div className="text-emerald-400 font-bold">RIGHT HAND</div>
-                  <div className="text-[10px]">Tracked (Chest)</div>
+
+                <div className="p-1.5 rounded bg-orange-500/10 border border-orange-500/20">
+                  <span className="text-[10px] text-orange-400 block font-bold">RIGHT HAND</span>
+                  <span className="text-lg font-extrabold text-orange-400">
+                    {rightHand?.extendedCount ?? 0}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 block">{rightHand?.posture ?? 'NONE'}</span>
                 </div>
               </div>
 
-              <div className="absolute bottom-2 left-2 text-[10px] font-mono bg-black/70 text-zinc-400 px-1.5 py-0.5 rounded">
-                640×480 • 1€ Filter Active
-              </div>
+              {/* Hold Progress Bar */}
+              {gestureDebug?.holdProgressPercent !== undefined && gestureDebug.holdProgressPercent > 0 && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-zinc-400">
+                    <span>Confirmation Hold:</span>
+                    <span className="text-orange-400">{gestureDebug.holdProgressPercent}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-500 transition-all duration-75"
+                      style={{ width: `${gestureDebug.holdProgressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Ingestion & Upload Status */}
-          <div className="bg-zinc-800/60 border border-zinc-700 p-3 flex flex-col gap-1.5">
-            <div className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Status Feed</span>
-            </div>
-            <div className="font-mono text-[11px] text-zinc-400 break-words">
-              {uploadStatus}
-            </div>
+        {/* Error Notification */}
+        {cameraError && (
+          <div className="absolute bottom-4 left-4 z-40 p-3 rounded-lg bg-red-600/90 text-white text-xs flex items-center gap-2 font-mono shadow-xl">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{cameraError}</span>
           </div>
-
-          {/* Quick Gesture Guide Card */}
-          <div className="bg-zinc-800/40 border border-zinc-700 p-4 flex flex-col gap-3">
-            <div className="text-xs font-black uppercase tracking-wider text-secondary-400">
-              OR Gesture Reference
-            </div>
-
-            <div className="flex flex-col gap-2 font-mono text-[11px] text-zinc-300">
-              <div className="flex justify-between border-b border-zinc-700 pb-1">
-                <span className="text-zinc-400">1 + 1 fingers:</span>
-                <span className="font-bold text-white">Slice Navigation</span>
-              </div>
-              <div className="flex justify-between border-b border-zinc-700 pb-1">
-                <span className="text-zinc-400">2 + 2 fingers:</span>
-                <span className="font-bold text-white">Continuous Zoom</span>
-              </div>
-              <div className="flex justify-between border-b border-zinc-700 pb-1">
-                <span className="text-zinc-400">3 + 3 fingers:</span>
-                <span className="font-bold text-white">Windowing Presets</span>
-              </div>
-              <div className="flex justify-between border-b border-zinc-700 pb-1">
-                <span className="text-zinc-400">4 + 4 fingers:</span>
-                <span className="font-bold text-white">Step Panning</span>
-              </div>
-              <div className="flex justify-between pt-0.5 text-secondary-400">
-                <span>Fist + Fist:</span>
-                <span className="font-bold">Safety Rest Pause</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Phase 2 Cornerstone Notice */}
-          <div className="bg-primary-900/30 border border-primary-500/40 p-3 rounded text-[11px] text-zinc-400 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-primary-400 shrink-0 mt-0.5" />
-            <span>
-              Phase 1 Frontend Architecture complete. Cornerstone3D & client-side MediaPipe WASM hooks staged for Phase 2 integration.
-            </span>
-          </div>
-
-        </div>
-
+        )}
       </div>
-
     </div>
   );
 };

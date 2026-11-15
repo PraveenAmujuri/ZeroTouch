@@ -6,15 +6,17 @@ import { Features } from './pages/Features';
 import { Docs } from './pages/Docs';
 import { Contact } from './pages/Contact';
 import { Viewer } from './pages/Viewer';
+import { GestureTester } from './pages/GestureTester';
 
 export const App: React.FC = () => {
   const location = useLocation();
   const isViewer = location.pathname === '/viewer';
+  const isTester = location.pathname === '/gestures-test';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f7f7f9] text-zinc-900">
       {/* Show marketing navbar on marketing pages */}
-      {!isViewer && <Navbar />}
+      {!isViewer && !isTester && <Navbar />}
 
       {/* Main Content View */}
       <main className="flex-1 flex flex-col">
@@ -24,6 +26,7 @@ export const App: React.FC = () => {
           <Route path="/docs" element={<Docs />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/viewer" element={<Viewer />} />
+          <Route path="/gestures-test" element={<GestureTester />} />
         </Routes>
       </main>
 
