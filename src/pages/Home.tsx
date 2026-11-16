@@ -1,7 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FooterLogo } from '../components/FooterLogo';
 import { Logo } from '../components/Logo';
+
+// Canvas-based video renderer to prevent Opera / Chrome from injecting floating media overlays (pop-out, video-skip)
+const HeroVideoCanvas: React.FC = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let isMounted = true;
+
+    const render = () => {
+      if (!isMounted) return;
+      if (video.readyState >= 2) {
+        if (canvas.width !== video.videoWidth && video.videoWidth > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+      animId = requestAnimationFrame(render);
+    };
+
+    video.play().catch(() => {});
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      isMounted = false;
+      cancelAnimationFrame(animId);
+    };
+  }, []);
+
+  return (
+    <>
+      {/* Offscreen video element ensures hardware-accelerated playback without browser UI overlays */}
+      <video
+        ref={videoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+          pointerEvents: 'none',
+          clipPath: 'inset(50%)',
+        }}
+      >
+        <source src="/hero_video.webm" type="video/webm" />
+        <source src="/hero_video.mp4" type="video/mp4" />
+      </video>
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none select-none"
+        aria-hidden="true"
+      />
+    </>
+  );
+};
 
 export const Home: React.FC = () => {
   const [selectedModality, setSelectedModality] = useState<'echo' | 'angio' | 'mri'>('echo');
@@ -147,29 +216,8 @@ export const Home: React.FC = () => {
 
           {/* Right Column: Exactly 60% width on desktop (matching 6-out-of-10 cols on Loz) with md:border-l-4 border-[#27272a] */}
           <div className="relative overflow-hidden banner__media md:border-l-4 border-[#27272a] media w-full md:w-[60%] flex-1 h-full min-h-[380px] flex items-center justify-center bg-[#6f7bd4]">
-            {/* Video animation */}
-            <video
-              className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none select-none"
-              autoPlay
-              loop
-              muted
-              playsInline
-              controls={false}
-              controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
-              disablePictureInPicture
-              disableRemotePlayback
-              poster="/loz_hero_animation_no_leaves.webp"
-            >
-              <source src="/hero_video.webm" type="video/webm" />
-              <source src="/hero_video.mp4" type="video/mp4" />
-              <img src="/loz_hero_animation_no_leaves.webp" width="1920" height="1080" alt="0Touch Medical Scan Visualization" />
-            </video>
-            {/* Solid transparent overlay completely intercepting hover and mouse events */}
-            <div
-              className="absolute inset-0 z-30 pointer-events-auto select-none bg-black/[0.001]"
-              onContextMenu={(e) => e.preventDefault()}
-              aria-hidden="true"
-            />
+            {/* Seamless canvas-rendered video prevents browser media overlays (Opera pop-out, skip forward) */}
+            <HeroVideoCanvas />
           </div>
 
         </div>

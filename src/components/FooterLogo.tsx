@@ -6,26 +6,34 @@ interface FooterLogoProps {
   color?: string;
 }
 
+// Pre-computed fallback lengths for clean cubic Béziers in zerotouch_paths_clean.json
+// (all true lengths are between 870px and 1560px)
+const LETTER_LENGTHS = [1650, 950, 1550, 1350, 1350, 1350];
+
 export const FooterLogo: React.FC<FooterLogoProps> = ({ className = '', color = '#74d2c2' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
-  const pathLengths = useRef<number[]>([]);
+  const [lengths, setLengths] = useState<number[]>(LETTER_LENGTHS);
   const [isDrawn, setIsDrawn] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
 
-  // Setup strokeDasharray and initial strokeDashoffset on mount
+  // Measure browser sub-pixel path lengths on mount to update state
   useEffect(() => {
+    const measured: number[] = [];
     pathRefs.current.forEach((path, idx) => {
       if (path && typeof path.getTotalLength === 'function') {
         const len = Math.ceil(path.getTotalLength());
-        pathLengths.current[idx] = len;
-        path.style.strokeDasharray = `${len}px`;
-        path.style.strokeDashoffset = `${len}px`;
+        measured[idx] = len > 0 ? len : LETTER_LENGTHS[idx];
+      } else {
+        measured[idx] = LETTER_LENGTHS[idx];
       }
     });
+    if (measured.length === pathsData.letters.length) {
+      setLengths(measured);
+    }
   }, []);
 
-  // Viewport & Scroll detection: Draws on scroll down, reverses as soon as it reaches ~50% visibility when scrolling up
+  // Viewport scroll position trigger calibrated directly to user's view
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
@@ -33,53 +41,31 @@ export const FooterLogo: React.FC<FooterLogoProps> = ({ className = '', color = 
       return;
     }
 
-    if (!containerRef.current) return;
-
-    const checkVisibility = () => {
+    const checkScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const visibleHeight = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0));
-      const ratio = rect.height > 0 ? visibleHeight / rect.height : 0;
+      const windowHeight = window.innerHeight || document.documentElement.clientHeight;
 
-      // When at least 50% of the logo is visible in viewport: draw forward
-      if (ratio >= 0.50) {
-        setIsDrawn(true);
-      }
-      // When scrolling back up and logo visibility drops below ~48% (at the point in screenshot): reverse draw
-      else if (ratio < 0.48) {
-        setIsDrawn(false);
+      // In the screenshot, the logo is sitting near the bottom edge (top of logo at ~82% of window height).
+      // When scrolling down and top of logo reaches <= 85% of window: draw forward.
+      // When scrolling up and top of logo drops > 80% of window: reverse draw immediately.
+      const shouldDraw = rect.top <= windowHeight * 0.85 && rect.bottom > 0;
+
+      setIsDrawn(shouldDraw);
+      if (!shouldDraw) {
         setIsHovered(false);
       }
     };
 
-    // IntersectionObserver for hardware-accelerated visibility triggers
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.50) {
-            setIsDrawn(true);
-          } else if (!entry.isIntersecting || entry.intersectionRatio < 0.48) {
-            setIsDrawn(false);
-            setIsHovered(false);
-          }
-        });
-      },
-      {
-        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.45, 0.48, 0.50, 0.55, 0.6, 0.7, 0.8, 0.9, 1.0],
-      }
-    );
+    window.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll, { passive: true });
 
-    observer.observe(containerRef.current);
-    window.addEventListener('scroll', checkVisibility, { passive: true });
-    window.addEventListener('resize', checkVisibility, { passive: true });
-
-    // Initial check on load
-    checkVisibility();
+    // Initial check
+    checkScroll();
 
     return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', checkVisibility);
-      window.removeEventListener('resize', checkVisibility);
+      window.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
     };
   }, []);
 
@@ -100,10 +86,10 @@ export const FooterLogo: React.FC<FooterLogoProps> = ({ className = '', color = 
       >
         {pathsData.letters.map((letter, idx) => {
           // Stagger delays: forward order (0 -> H) when drawing, reverse order (H -> 0) when unwinding
-          const forwardDelay = (idx * 0.18).toFixed(2);
-          const reverseDelay = ((pathsData.letters.length - 1 - idx) * 0.1).toFixed(2);
+          const forwardDelay = (idx * 0.16).toFixed(2);
+          const reverseDelay = ((pathsData.letters.length - 1 - idx) * 0.08).toFixed(2);
           const delaySeconds = isDrawn ? forwardDelay : reverseDelay;
-          const len = pathLengths.current[idx];
+          const len = lengths[idx] || LETTER_LENGTHS[idx];
 
           return (
             <path
@@ -117,8 +103,9 @@ export const FooterLogo: React.FC<FooterLogoProps> = ({ className = '', color = 
               strokeLinejoin="round"
               fill={isHovered && isDrawn ? color : 'transparent'}
               style={{
-                strokeDashoffset: isDrawn ? '0px' : len ? `${len}px` : undefined,
-                transition: `stroke-dashoffset 0.95s cubic-bezier(0.47, 0, 0.745, 0.715) ${delaySeconds}s, fill 0.6s ease-in-out`,
+                strokeDasharray: `${len}px`,
+                strokeDashoffset: isDrawn ? '0px' : `${len}px`,
+                transition: `stroke-dashoffset 0.85s cubic-bezier(0.47, 0, 0.745, 0.715) ${delaySeconds}s, fill 0.5s ease-in-out`,
                 paintOrder: 'fill stroke',
               }}
             />
