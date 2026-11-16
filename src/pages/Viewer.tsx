@@ -43,6 +43,8 @@ import {
   OperationMode,
   FingerStates,
 } from '../gestures';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { DesktopRequired } from '../components/DesktopRequired';
 
 const PRESET_WINDOWS: Record<string, { wc: number; ww: number }> = {
   'DEFAULT / NATIVE': { wc: 128, ww: 256 },
@@ -56,6 +58,8 @@ const PRESET_WINDOWS: Record<string, { wc: number; ww: number }> = {
 const PRESET_LIST = Object.keys(PRESET_WINDOWS);
 
 export const Viewer: React.FC = () => {
+  const isMobile = useIsMobile(768);
+
   // DICOM Study state
   const [studyMeta, setStudyMeta] = useState<DICOMStudyMeta | null>(null);
   const [currentFile, setCurrentFile] = useState<string>('0003.dcm');
@@ -493,6 +497,8 @@ export const Viewer: React.FC = () => {
 
   // 5. Initialize Gesture Controller
   useEffect(() => {
+    if (isMobile) return;
+
     const controller = new GestureController();
     gestureControllerRef.current = controller;
 
@@ -514,7 +520,23 @@ export const Viewer: React.FC = () => {
     return () => {
       controller.stop();
     };
-  }, [handleGestureAction]);
+  }, [handleGestureAction, isMobile]);
+
+  // Stop camera and gestures immediately if resized to mobile
+  useEffect(() => {
+    if (isMobile) {
+      if (gestureControllerRef.current) {
+        gestureControllerRef.current.stop();
+      }
+      if (webcamVideoRef.current && webcamVideoRef.current.srcObject) {
+        const stream = webcamVideoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        webcamVideoRef.current.srcObject = null;
+      }
+      setIsCameraReady(false);
+      setIsGestureEnabled(false);
+    }
+  }, [isMobile]);
 
   // Toggle Webcam Gesture Tracking
   const toggleGestureControl = async () => {
@@ -703,6 +725,11 @@ export const Viewer: React.FC = () => {
       }
     }
   };
+
+  // Mobile screen restriction: Render Desktop Experience Required screen
+  if (isMobile) {
+    return <DesktopRequired />;
+  }
 
   return (
     <div

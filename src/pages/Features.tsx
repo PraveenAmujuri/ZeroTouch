@@ -83,41 +83,41 @@ export const Features: React.FC = () => {
         },
         {
           title: 'HAND + FIST: PREVIOUS PRESET',
-          sub: 'Hold left hand open and right fist to step back to previous calibrated window preset.',
-          badge: 'PREV PRESET',
+          sub: 'Hold left hand open with right hand closed in a fist to switch to previous window/level preset.',
+          badge: 'PRESET PREV',
           svgUrl: '/guestures/hand-fist.svg',
         },
         {
           title: 'FIST + HAND: NEXT PRESET',
-          sub: 'Hold left fist and right hand open to step forward to next calibrated window preset.',
-          badge: 'NEXT PRESET',
+          sub: 'Hold left hand in a fist with right hand open to advance to next clinical preset (Bone, Soft Tissue, Lung).',
+          badge: 'PRESET NEXT',
           svgUrl: '/guestures/fist-hand.svg',
         },
       ],
     },
     {
       id: 3,
-      title: 'STEP-BASED PANNING',
+      title: 'DIRECTIONAL PANNING',
       counts: '4 + 4',
-      desc: '4+4 Four Fingers (Cardinal)',
+      desc: '4+4 Four Fingers',
       slides: [
         {
-          title: 'ENTER PANNING: 4 + 4 FINGERS',
-          sub: 'Extend 4 fingers on both hands to engage step-based directional Panning mode.',
-          badge: 'PANNING ENGAGED',
+          title: 'ENTER MODE: 4 + 4 POSES',
+          sub: 'Show matching 4 fingers on both hands to lock Directional Pan mode.',
+          badge: 'MODE ENGAGEMENT',
           svgUrl: '/guestures/panning.svg',
         },
         {
-          title: '1+1 LEFT & 2+2 RIGHT',
-          sub: 'Show matching 1+1 fingers to step Left (-18px). Show matching 2+2 fingers to step Right (+18px).',
-          badge: 'HORIZONTAL AXIS',
-          svgUrl: '/guestures/slice-navigation.svg',
+          title: 'HAND + FIST: PAN LEFT / UP',
+          sub: 'Hold left hand open with right hand in a fist to pan viewport toward left/upward coordinates.',
+          badge: 'PAN DIR 1',
+          svgUrl: '/guestures/hand-fist.svg',
         },
         {
-          title: '3+3 UP & 4+4 DOWN',
-          sub: 'Show matching 3+3 fingers to step Up (-18px). Show matching 4+4 fingers to step Down (+18px).',
-          badge: 'VERTICAL AXIS',
-          svgUrl: '/guestures/panning.svg',
+          title: 'FIST + HAND: PAN RIGHT / DOWN',
+          sub: 'Hold left hand in a fist with right hand open to pan viewport toward right/downward coordinates.',
+          badge: 'PAN DIR 2',
+          svgUrl: '/guestures/fist-hand.svg',
         },
       ],
     },
@@ -126,7 +126,7 @@ export const Features: React.FC = () => {
   const currentModeData = modes[activeMode];
   const totalSlides = currentModeData.slides.length;
 
-  // WhatsApp-style Auto-slide story timer
+  // Auto-play story bar ticker
   useEffect(() => {
     if (isHovered) return;
 
@@ -134,7 +134,7 @@ export const Features: React.FC = () => {
       setStoryProgress((prev) => {
         const next = prev + (TICK_INTERVAL_MS / SLIDE_DURATION_MS) * 100;
         if (next >= 100) {
-          setActiveSlide((s) => (s + 1) % totalSlides);
+          setActiveSlide((curr) => (curr + 1) % totalSlides);
           return 0;
         }
         return next;
@@ -142,48 +142,45 @@ export const Features: React.FC = () => {
     }, TICK_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [isHovered, totalSlides, activeMode]);
+  }, [isHovered, totalSlides, activeSlide]);
 
-  const handleSelectSlide = (idx: number) => {
-    setActiveSlide(idx);
-    setStoryProgress(0);
-  };
-
-  const handleSelectMode = (id: number) => {
-    setActiveMode(id);
+  const handleSelectMode = (index: number) => {
+    setActiveMode(index);
     setActiveSlide(0);
     setStoryProgress(0);
   };
 
+  const handleSelectSlide = (index: number) => {
+    setActiveSlide(index);
+    setStoryProgress(0);
+  };
+
   return (
-    <div className="w-full bg-[#f3f4fb] flex flex-col min-h-screen">
+    <div className="w-full bg-white text-[#27272a] select-none">
       
-      {/* =========================================================================
-          MAIN PRODUCT PAGE TWO-COLUMN LAYOUT
-          Matching https://theloz.co/products/moisturizing-mint-lozenges:
-          - Desktop (min-[991px]): 
-            * Left column is fixed at left: 0 with 50% width and exact 100vh - 100px height.
-            * Right column is in standard document flow with 50% width and left border of 4px solid #27272a.
-            * Right column scrolls down naturally into its dedicated footer.
-         ========================================================================= */}
-      <div className="w-full relative flex-1">
+      {/* Outer wrapper:
+          On mobile (<991px): clean stacked natural document flow with sticky-ready container
+          On desktop (>=991px): 50/50 split layout with fixed left gallery matching theloz.co/products */}
+      <div className="relative w-full flex flex-col min-[991px]:flex-row">
         
-        {/* Top-left gap filler: fills the 100px gap with blue when navbar scrolls up out of view */}
+        {/* Top-left gap filler: fills the 100px gap with blue when navbar scrolls up out of view on desktop */}
         <div
           className="hidden min-[991px]:block fixed top-0 left-0 w-1/2 h-[104px] bg-[#6f7bd4] border-r-4 border-[#27272a] z-10 pointer-events-none"
           aria-hidden="true"
         />
 
-        {/* ================= LEFT COLUMN: CLEAN FIXED GESTURE GALLERY ================= */}
+        {/* ================= LEFT COLUMN: CLEAN GESTURE GALLERY =================
+            On mobile (<991px): in-flow hero gallery with responsive square aspect ratio and full touch arrows.
+            On desktop (>=991px): fixed to the left half. */}
         <div
-          className="w-full min-[991px]:w-1/2 min-[991px]:fixed min-[991px]:top-[100px] min-[991px]:left-0 min-[991px]:h-[calc(100vh-100px)] bg-[#6f7bd4] border-b-4 min-[991px]:border-b-0 min-[991px]:border-r-4 border-[#27272a] z-10 flex flex-col justify-between p-6 sm:p-8 lg:p-10 select-none overflow-hidden"
+          className="w-full min-[991px]:w-1/2 min-[991px]:fixed min-[991px]:top-[100px] min-[991px]:left-0 min-[991px]:h-[calc(100vh-100px)] bg-[#6f7bd4] border-b-4 min-[991px]:border-b-0 min-[991px]:border-r-4 border-[#27272a] z-10 flex flex-col justify-between p-4 sm:p-6 lg:p-10 select-none overflow-hidden"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
           
-          {/* Top Clean WhatsApp-style Story Progress Bar */}
-          <div className="w-full max-w-xl mx-auto pt-2 pb-6 shrink-0">
-            <div className="w-full flex items-center justify-between gap-3">
+          {/* Top Story Progress Bar */}
+          <div className="w-full max-w-xl mx-auto pt-1 sm:pt-2 pb-4 sm:pb-6 shrink-0">
+            <div className="w-full flex items-center justify-between gap-2 sm:gap-3">
               {currentModeData.slides.map((_, idx) => {
                 let barWidth = '0%';
                 if (idx < activeSlide) {
@@ -196,7 +193,7 @@ export const Features: React.FC = () => {
                     key={idx}
                     type="button"
                     onClick={() => handleSelectSlide(idx)}
-                    className="h-1.5 flex-1 bg-black/25 rounded-full overflow-hidden focus:outline-none cursor-pointer relative"
+                    className="h-1.5 sm:h-2 flex-1 bg-black/25 rounded-full overflow-hidden focus:outline-none cursor-pointer relative"
                     title={`Gesture Step ${idx + 1}`}
                   >
                     <div
@@ -210,15 +207,15 @@ export const Features: React.FC = () => {
           </div>
 
           {/* Center Graphic: Authentic User SVGs on TRANSPARENT Background */}
-          <div className="flex flex-col items-center justify-center text-center w-full min-h-0 flex-1 py-2">
+          <div className="flex flex-col items-center justify-center text-center w-full min-h-0 flex-1 py-1 sm:py-2">
             
             {/* Gesture Badge */}
-            <span className="bg-[#ff8066] border-2 border-[#27272a] text-[#27272a] px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-4 inline-block shrink-0 shadow-[2px_2px_0px_#27272a]">
+            <span className="bg-[#ff8066] border-2 border-[#27272a] text-[#27272a] px-3 sm:px-4 py-1 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider mb-2 sm:mb-4 inline-block shrink-0 shadow-[2px_2px_0px_#27272a]">
               {currentModeData.slides[activeSlide].badge}
             </span>
 
-            {/* SVG Visual: Transparent Background Directly Over Periwinkle Field */}
-            <div className="w-full max-w-[320px] sm:max-w-[350px] lg:max-w-[380px] aspect-square flex items-center justify-center p-2 shrink">
+            {/* SVG Visual: Sized comfortably on mobile without breaking viewport */}
+            <div className="w-full max-w-[240px] xs:max-w-[280px] sm:max-w-[340px] lg:max-w-[380px] aspect-square flex items-center justify-center p-2 shrink">
               <img
                 src={currentModeData.slides[activeSlide].svgUrl}
                 alt={currentModeData.slides[activeSlide].title}
@@ -227,9 +224,9 @@ export const Features: React.FC = () => {
             </div>
 
             {/* Clean Caption Card Below Transparent SVG */}
-            <div className="bg-white border-2 border-[#27272a] p-3.5 sm:p-4 rounded-[16px] max-w-md w-full mt-3 shadow-[4px_4px_0px_#27272a] text-center shrink-0">
+            <div className="bg-white border-2 border-[#27272a] p-3 sm:p-4 rounded-[16px] max-w-md w-full mt-2 sm:mt-3 shadow-[3px_3px_0px_#27272a] sm:shadow-[4px_4px_0px_#27272a] text-center shrink-0">
               <h3
-                className="text-base sm:text-lg font-black text-[#27272a] mb-1 leading-tight uppercase"
+                className="text-sm sm:text-lg font-black text-[#27272a] mb-1 leading-tight uppercase"
                 style={{ fontFamily: '"Pratico Variable", sans-serif' }}
               >
                 {currentModeData.slides[activeSlide].title}
@@ -241,20 +238,24 @@ export const Features: React.FC = () => {
           </div>
 
           {/* Bottom Slider Nav Arrows */}
-          <div className="w-full flex items-center justify-between pt-2 shrink-0 max-w-xl mx-auto">
+          <div className="w-full flex items-center justify-between pt-3 sm:pt-2 shrink-0 max-w-xl mx-auto">
             <button
               type="button"
               onClick={() => handleSelectSlide(activeSlide > 0 ? activeSlide - 1 : totalSlides - 1)}
-              className="w-10 h-10 rounded-full bg-white border-2 border-[#27272a] flex items-center justify-center font-black text-[#27272a] hover:bg-[#ffa694] transition-colors focus:outline-none shadow-[2px_2px_0px_#27272a]"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border-2 border-[#27272a] flex items-center justify-center font-black text-[#27272a] hover:bg-[#ffa694] transition-colors focus:outline-none shadow-[2px_2px_0px_#27272a] text-sm"
               title="Previous gesture step"
             >
               ←
             </button>
 
+            <span className="text-xs font-bold uppercase text-white/90">
+              Step {activeSlide + 1} of {totalSlides}
+            </span>
+
             <button
               type="button"
               onClick={() => handleSelectSlide((activeSlide + 1) % totalSlides)}
-              className="w-10 h-10 rounded-full bg-white border-2 border-[#27272a] flex items-center justify-center font-black text-[#27272a] hover:bg-[#ffa694] transition-colors focus:outline-none shadow-[2px_2px_0px_#27272a]"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border-2 border-[#27272a] flex items-center justify-center font-black text-[#27272a] hover:bg-[#ffa694] transition-colors focus:outline-none shadow-[2px_2px_0px_#27272a] text-sm"
               title="Next gesture step"
             >
               →
@@ -264,33 +265,35 @@ export const Features: React.FC = () => {
         </div>
 
 
-        {/* ================= RIGHT COLUMN: SIMPLE & CLEAN PRODUCT OPTIONS ================= */}
+        {/* ================= RIGHT COLUMN: PRODUCT OPTIONS & SPECIFICATION =================
+            On mobile (<991px): flows naturally right after the gallery with full padding & touch-friendly cards.
+            On desktop (>=991px): occupies right 50% width and scrolls smoothly. */}
         <div className="w-full min-[991px]:w-1/2 min-[991px]:ml-auto bg-white border-l-0 min-[991px]:border-l-4 border-[#27272a] flex flex-col justify-between">
           
-          <div className="p-8 sm:p-12 lg:p-16 flex flex-col justify-between">
+          <div className="p-5 sm:p-10 lg:p-16 flex flex-col justify-between">
             
-            {/* Header: Title + Droplet / Count Badge (Exact LOZ style) */}
-            <div className="border-b-2 border-[#27272a] pb-6 mb-8 flex items-start justify-between">
+            {/* Header: Title + Modes Count Badge */}
+            <div className="border-b-2 border-[#27272a] pb-5 sm:pb-6 mb-6 sm:mb-8 flex items-start justify-between">
               <div>
                 <h1
                   className="text-[#27272a] uppercase leading-none m-0"
                   style={{
                     fontFamily: '"Pratico Variable", sans-serif',
-                    fontSize: 'clamp(2.4rem, 5vw, 4rem)',
+                    fontSize: 'clamp(2rem, 6vw, 3.8rem)',
                     fontWeight: 900,
                   }}
                 >
                   GESTURE CONTROL MODES
                 </h1>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#27272a]/60 mt-3">
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-[#27272a]/60 mt-2 sm:mt-3">
                   STERILE TWO-HANDED INTERACTION PIPELINE
                 </p>
               </div>
 
-              {/* Loz Flame Badge */}
-              <div className="flex flex-col items-center shrink-0 ml-4">
-                <span className="text-[11px] font-bold text-[#ff8066] uppercase">MODES</span>
-                <div className="w-12 h-14 bg-[#ff8066] border-2 border-[#27272a] flex items-center justify-center font-black text-white text-base shadow-[2px_2px_0px_#27272a]">
+              {/* Modes Count Badge */}
+              <div className="flex flex-col items-center shrink-0 ml-3">
+                <span className="text-[10px] font-bold text-[#ff8066] uppercase">MODES</span>
+                <div className="w-10 h-12 sm:w-12 sm:h-14 bg-[#ff8066] border-2 border-[#27272a] flex items-center justify-center font-black text-white text-base shadow-[2px_2px_0px_#27272a]">
                   4
                 </div>
               </div>
@@ -298,19 +301,19 @@ export const Features: React.FC = () => {
 
 
             {/* STEP 1: SELECT OPERATING MODE */}
-            <div className="mb-10">
+            <div className="mb-8 sm:mb-10">
               <span
-                className="block text-[#27272a] mb-4 text-left"
+                className="block text-[#27272a] mb-3 sm:mb-4 text-left"
                 style={{
                   fontFamily: '"Pratico Variable", sans-serif',
-                  fontSize: '28px',
+                  fontSize: 'clamp(22px, 4vw, 28px)',
                   fontWeight: 600,
                 }}
               >
                 1. Select Operating Mode
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {modes.map((mode) => {
                   const isSelected = activeMode === mode.id;
                   return (
@@ -318,7 +321,7 @@ export const Features: React.FC = () => {
                       key={mode.id}
                       type="button"
                       onClick={() => handleSelectMode(mode.id)}
-                      className={`p-4 border-2 border-[#27272a] text-left transition-all relative ${
+                      className={`p-3.5 sm:p-4 border-2 border-[#27272a] text-left transition-all relative ${
                         isSelected
                           ? 'bg-[#6f7bd4] text-white shadow-[4px_4px_0px_#27272a]'
                           : 'bg-white text-[#27272a] hover:bg-zinc-50'
@@ -330,11 +333,11 @@ export const Features: React.FC = () => {
                           ✓
                         </div>
                       )}
-                      <span className="block text-xl font-bold uppercase leading-tight">
+                      <span className="block text-lg sm:text-xl font-bold uppercase leading-tight">
                         {mode.title}
                       </span>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-xs font-black uppercase px-2 py-0.5 border ${
+                        <span className={`text-[10px] sm:text-xs font-black uppercase px-2 py-0.5 border ${
                           isSelected ? 'bg-white text-[#27272a] border-white' : 'bg-[#ff8066] text-[#27272a] border-[#27272a]'
                         }`}>
                           {mode.counts}
@@ -351,42 +354,42 @@ export const Features: React.FC = () => {
 
 
             {/* STEP 2: DIRECTIONAL HAND ACTIONS */}
-            <div className="mb-10">
+            <div className="mb-8 sm:mb-10">
               <span
-                className="block text-[#27272a] mb-4 text-left"
+                className="block text-[#27272a] mb-3 sm:mb-4 text-left"
                 style={{
                   fontFamily: '"Pratico Variable", sans-serif',
-                  fontSize: '28px',
+                  fontSize: 'clamp(22px, 4vw, 28px)',
                   fontWeight: 600,
                 }}
               >
                 2. Directional Hand Actions
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="border-2 border-[#27272a] p-4 bg-white flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="border-2 border-[#27272a] p-3.5 sm:p-4 bg-white flex items-center gap-3 shadow-[2px_2px_0px_#27272a]">
                   <span className="w-8 h-8 rounded-full bg-[#6f7bd4] text-white font-black flex items-center justify-center text-sm shrink-0">
                     A
                   </span>
                   <div className="text-left">
-                    <span className="block text-sm font-black uppercase text-[#27272a]">
+                    <span className="block text-xs sm:text-sm font-black uppercase text-[#27272a]">
                       HAND + FIST
                     </span>
-                    <span className="block text-xs text-[#27272a]/70 font-semibold mt-0.5">
+                    <span className="block text-[11px] sm:text-xs text-[#27272a]/70 font-semibold mt-0.5">
                       {activeMode === 0 ? 'Step Backward 1 Slice' : activeMode === 1 ? 'Continuous Zoom In' : activeMode === 2 ? 'Previous Preset' : 'Left / Up Pan'}
                     </span>
                   </div>
                 </div>
 
-                <div className="border-2 border-[#27272a] p-4 bg-white flex items-center gap-3">
+                <div className="border-2 border-[#27272a] p-3.5 sm:p-4 bg-white flex items-center gap-3 shadow-[2px_2px_0px_#27272a]">
                   <span className="w-8 h-8 rounded-full bg-[#ff8066] text-[#27272a] font-black flex items-center justify-center text-sm shrink-0">
                     B
                   </span>
                   <div className="text-left">
-                    <span className="block text-sm font-black uppercase text-[#27272a]">
+                    <span className="block text-xs sm:text-sm font-black uppercase text-[#27272a]">
                       FIST + HAND
                     </span>
-                    <span className="block text-xs text-[#27272a]/70 font-semibold mt-0.5">
+                    <span className="block text-[11px] sm:text-xs text-[#27272a]/70 font-semibold mt-0.5">
                       {activeMode === 0 ? 'Step Forward 1 Slice' : activeMode === 1 ? 'Continuous Zoom Out' : activeMode === 2 ? 'Next Preset' : 'Right / Down Pan'}
                     </span>
                   </div>
@@ -396,36 +399,36 @@ export const Features: React.FC = () => {
 
 
             {/* STEP 3: STABILIZATION PIPELINE */}
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <span
-                className="block text-[#27272a] mb-4 text-left"
+                className="block text-[#27272a] mb-3 sm:mb-4 text-left"
                 style={{
                   fontFamily: '"Pratico Variable", sans-serif',
-                  fontSize: '28px',
+                  fontSize: 'clamp(22px, 4vw, 28px)',
                   fontWeight: 600,
                 }}
               >
                 3. Stabilization Pipeline
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 border-2 border-[#27272a] bg-[#ff8066]/20 relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3.5 sm:p-4 border-2 border-[#27272a] bg-[#ff8066]/20 relative shadow-[2px_2px_0px_#27272a]">
                   <div className="absolute top-2 right-2 w-5 h-5 bg-[#ff8066] border border-[#27272a] flex items-center justify-center text-white text-xs font-black">
                     ✓
                   </div>
-                  <span className="block font-black text-sm uppercase text-[#27272a]">
+                  <span className="block font-black text-xs sm:text-sm uppercase text-[#27272a]">
                     1€ Adaptive Jitter Filtering
                   </span>
-                  <span className="block text-xs text-[#27272a]/70 mt-1">
+                  <span className="block text-[11px] sm:text-xs text-[#27272a]/70 mt-1 leading-snug">
                     Suppresses webcam landmark jitter with adaptive low-pass filtering, maintaining stable hand tracking during gesture recognition.
                   </span>
                 </div>
 
-                <div className="p-4 border-2 border-[#27272a] bg-white">
-                  <span className="block font-black text-sm uppercase text-[#27272a]">
+                <div className="p-3.5 sm:p-4 border-2 border-[#27272a] bg-white shadow-[2px_2px_0px_#27272a]">
+                  <span className="block font-black text-xs sm:text-sm uppercase text-[#27272a]">
                     Temporal Anti-Repeat Control
                   </span>
-                  <span className="block text-xs text-[#27272a]/70 mt-1">
+                  <span className="block text-[11px] sm:text-xs text-[#27272a]/70 mt-1 leading-snug">
                     Controlled gesture timing and repeat intervals prevent accidental duplicate triggers and runaway interactions.
                   </span>
                 </div>
@@ -434,23 +437,23 @@ export const Features: React.FC = () => {
 
           </div>
 
-          {/* Launch CTA Box Button: Exact full-width right section, default dark zinc-800, hover coral #ff8066, no black border-t bar */}
-          <div className="w-full pb-8 sm:pb-12 bg-white">
+          {/* Launch CTA Box Button */}
+          <div className="w-full pb-6 sm:pb-12 bg-white">
             <Link
               to="/viewer"
-              className="w-full bg-[#27272a] hover:bg-[#ff8066] text-white hover:text-[#27272a] border-y-4 border-[#27272a] px-8 sm:px-12 py-7 sm:py-8 flex items-center justify-between transition-colors duration-300 select-none group cursor-pointer"
+              className="w-full bg-[#27272a] hover:bg-[#ff8066] text-white hover:text-[#27272a] border-y-4 border-[#27272a] px-6 sm:px-12 py-5 sm:py-8 flex items-center justify-between transition-colors duration-300 select-none group cursor-pointer"
             >
               <span
-                className="font-extrabold uppercase tracking-tight text-xl sm:text-2xl md:text-3xl lg:text-4xl text-left"
+                className="font-extrabold uppercase tracking-tight text-lg sm:text-2xl md:text-3xl text-left"
                 style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '110%' }}
               >
                 TEST GESTURES IN LIVE DICOM VIEWER
               </span>
-              <span className="flex items-center gap-3 shrink-0 ml-4">
+              <span className="flex items-center gap-2 sm:gap-3 shrink-0 ml-3">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 448 512"
-                  className="w-6 h-6 fill-white group-hover:fill-[#27272a] transition-all duration-300 group-hover:translate-x-2 shrink-0"
+                  className="w-5 h-5 sm:w-6 sm:h-6 fill-white group-hover:fill-[#27272a] transition-all duration-300 group-hover:translate-x-2 shrink-0"
                 >
                   <path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z" />
                 </svg>
@@ -458,17 +461,14 @@ export const Features: React.FC = () => {
             </Link>
           </div>
 
-          {/* =========================================================================
-              CLEAN & SIMPLE PRODUCT PAGE FOOTER
-              (Exact layout matching page_content_product/index.html with full width inside right flow)
-             ========================================================================= */}
-          <footer className="footer bg-[#18181b] px-8 sm:px-12 py-16 text-white border-t-4 border-[#27272a] w-full">
+          {/* Product Page Footer */}
+          <footer className="footer bg-[#18181b] px-6 sm:px-12 py-12 sm:py-16 text-white border-t-4 border-[#27272a] w-full">
             <div className="flex flex-col items-center text-center max-w-md mx-auto">
               
-              <div className="w-full flex flex-col items-center mb-8">
+              <div className="w-full flex flex-col items-center mb-6 sm:mb-8">
                 <h2
-                  className="text-white text-2xl sm:text-3xl font-normal mb-6 text-center"
-                  style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '115%' }}
+                  className="text-white text-xl sm:text-3xl font-normal mb-5 sm:mb-6 text-center"
+                  style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '120%' }}
                 >
                   Explore my work, <strong className="text-[#74d2c2] font-normal">projects</strong><br className="hidden sm:inline" /> and experiments!
                 </h2>
@@ -481,36 +481,36 @@ export const Features: React.FC = () => {
                   aria-label="View My Portfolio"
                 >
                   <div
-                    className="w-full bg-white text-black px-5 py-3 text-sm font-bold uppercase tracking-wider flex items-center justify-start group-hover:text-[#6f7bd4] transition-colors"
+                    className="w-full bg-white text-black px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center justify-start group-hover:text-[#6f7bd4] transition-colors"
                     style={{ fontFamily: '"Pratico Variable", sans-serif' }}
                   >
                     VIEW MY PORTFOLIO
                   </div>
                   <div
-                    className="bg-[#ff8066] group-hover:bg-[#6f7bd4] text-black group-hover:text-white px-5 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0"
+                    className="bg-[#ff8066] group-hover:bg-[#6f7bd4] text-black group-hover:text-white px-4 sm:px-5 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0"
                   >
-                    <svg width="24" height="20" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-4 transition-transform duration-200 group-hover:translate-x-1">
+                    <svg width="22" height="18" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-4 transition-transform duration-200 group-hover:translate-x-1">
                       <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
                     </svg>
                   </div>
                 </a>
               </div>
 
-              {/* Interactive Animated SVG 0Touch Footer Logo with generous vertical padding */}
-              <div className="w-full flex justify-center my-12 md:my-16 lg:my-20 select-none">
-                <FooterLogo className="max-w-[280px] sm:max-w-[420px] md:max-w-[560px]" />
+              {/* Interactive Animated SVG 0Touch Footer Logo */}
+              <div className="w-full flex justify-center my-8 sm:my-14 select-none px-2">
+                <FooterLogo className="max-w-[240px] sm:max-w-[420px] md:max-w-[560px]" />
               </div>
 
               {/* Navigation links */}
-              <div className="flex flex-wrap justify-center gap-6 text-xs font-bold uppercase tracking-wider text-zinc-400">
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs font-bold uppercase tracking-wider text-zinc-400">
                 <Link to="/" className="hover:text-white">Home</Link>
                 <Link to="/features" className="hover:text-white">Product</Link>
-                <Link to="/docs" className="hover:text-white">FAQ</Link>
-                <Link to="/contact" className="hover:text-white">Blog</Link>
-                <Link to="/viewer" className="hover:text-[#74d2c2]">Cart</Link>
+                <Link to="/docs" className="hover:text-white">Docs</Link>
+                <Link to="/contact" className="hover:text-white">Contact</Link>
+                <Link to="/viewer" className="hover:text-[#74d2c2]">Launch</Link>
               </div>
 
-              <p className="text-[11px] text-zinc-500 mt-6">
+              <p className="text-[11px] text-zinc-500 mt-5">
                 © 2026 0Touch. All rights reserved.{' '}
                 <a
                   href="https://praveen-amujuri-portfolio.vercel.app"

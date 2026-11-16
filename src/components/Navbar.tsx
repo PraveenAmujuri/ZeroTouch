@@ -1,57 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 
-type HeaderState = 'normal' | 'hidden' | 'reveal';
-
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [headerState, setHeaderState] = useState<HeaderState>('normal');
-  const lastScrollY = useRef(0);
-  const headerHeight = useRef(100);
-  const navContainerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
+  // Close mobile drawer on route change
   useEffect(() => {
-    if (navContainerRef.current) {
-      headerHeight.current = navContainerRef.current.offsetHeight || 100;
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll only when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
     }
-
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-          const hHeight = headerHeight.current || 100;
-          const scrollDiff = currentScrollY - lastScrollY.current;
-
-          // 1. At the very top of the website (within 10px):
-          // Settle into natural document flow without any jump, flicker, or layout shift
-          if (currentScrollY <= 10) {
-            setHeaderState('normal');
-          }
-          // 2. Scrolled past header and scrolling down:
-          // Require at least 3px downward delta to prevent micro-jitter
-          else if (scrollDiff > 3 && currentScrollY > hHeight) {
-            setHeaderState('hidden');
-          }
-          // 3. Deliberately scrolling up:
-          // Require at least 8px upward movement before revealing
-          else if (scrollDiff < -8) {
-            setHeaderState('reveal');
-          }
-
-          lastScrollY.current = currentScrollY;
-          ticking = false;
-        });
-        ticking = true;
-      }
+    return () => {
+      document.body.style.overflow = '';
     };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [mobileMenuOpen]);
 
   const navLinks = [
     { name: 'HOME', path: '/' },
@@ -60,59 +30,47 @@ export const Navbar: React.FC = () => {
     { name: 'CONTACT', path: '/contact' },
   ];
 
-  // Smooth slide up on scroll down, smooth slide down on scroll up
-  const getHeaderClasses = () => {
-    switch (headerState) {
-      case 'reveal':
-        return 'sticky top-0 z-50 translate-y-0 transition-transform duration-300 ease-out shadow-[0_4px_12px_rgba(0,0,0,0.1)]';
-      case 'hidden':
-        return 'sticky top-0 z-50 -translate-y-full transition-transform duration-300 ease-in';
-      case 'normal':
-      default:
-        return 'relative z-50 translate-y-0 transition-transform duration-300 ease-out';
-    }
-  };
-
   return (
-    <div
-      ref={navContainerRef}
-      className={`header-wrapper color-background-1 header-wrapper--border-bottom w-full bg-[#f3f4fb] border-t-4 border-b-4 border-[#27272a] ${getHeaderClasses()}`}
-    >
-      <header className="header flex items-stretch justify-between w-full h-[100px] max-h-[100px] relative">
+    <div className="header-wrapper color-background-1 header-wrapper--border-bottom w-full bg-[#f3f4fb] border-t-4 border-b-4 border-[#27272a] relative z-40">
+      <header className="header flex items-stretch justify-between w-full h-[76px] sm:h-[88px] min-[991px]:h-[100px] relative">
         
-        {/* Mobile Kebab Menu button (hidden on desktop >=991px) */}
-        <div className="min-[991px]:hidden flex items-center pl-6">
+        {/* Mobile Hamburger / 3-Dot Kebab Menu button (Exact Loz style morphing to X) */}
+        <div className="min-[991px]:hidden flex items-center pl-4 sm:pl-6 z-20">
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="cursor-pointer p-2 flex items-center focus:outline-none"
-            aria-label="Toggle menu"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="cursor-pointer p-1.5 flex items-center justify-center focus:outline-none select-none"
+            aria-label="Toggle navigation drawer"
+            aria-expanded={mobileMenuOpen}
           >
-            <div className={`flex flex-col items-center justify-center transition-transform duration-300 ${mobileMenuOpen ? 'rotate-45' : ''}`}>
-              <div className="w-3 h-3 bg-[#27272a] rounded-full my-[2px]"></div>
-              <div className="w-3 h-3 bg-[#27272a] rounded-full my-[2px]"></div>
-              <div className="w-3 h-3 bg-[#27272a] rounded-full my-[2px]"></div>
+            <div className="menu__wrapper-kebab">
+              <div className={`menu__item-kebab ${mobileMenuOpen ? 'is-open' : ''}`}>
+                <div className="kebab-circle"></div>
+                <div className="kebab-circle"></div>
+                <div className="kebab-circle"></div>
+                <div className="kebab-circle"></div>
+                <div className="kebab-circle"></div>
+              </div>
             </div>
           </button>
         </div>
 
-        {/* Branding: 0Touch vector logo */}
-        <div className="flex items-center absolute left-16 md:left-20 min-[991px]:left-0 min-[991px]:max-h-[100px] min-[991px]:h-[100px] h-full">
+        {/* Branding: 0Touch vector logo (Centered on mobile, left-aligned on desktop >=991px) */}
+        <div className="flex items-center absolute left-1/2 -translate-x-1/2 min-[991px]:translate-x-0 min-[991px]:left-0 min-[991px]:max-h-[100px] min-[991px]:h-[100px] h-full z-10 pointer-events-auto">
           <Link
             to="/"
-            className="pl-6 md:pl-8 lg:pl-10 flex items-center focus:outline-none select-none"
+            className="pl-0 min-[991px]:pl-8 lg:pl-10 flex items-center focus:outline-none select-none"
             aria-label="0Touch Home"
           >
-            <Logo className="h-8 md:h-9 w-auto text-[#262929]" />
+            <Logo className="h-7 sm:h-8 min-[991px]:h-9 w-auto text-[#262929]" />
           </Link>
         </div>
 
-        {/* Center / Inline Navigation Menu */}
+        {/* Center / Inline Navigation Menu (Desktop >=991px) */}
         <nav className="hidden min-[991px]:flex items-stretch h-[100px] m-0 p-0 ml-auto">
           <ul className="flex items-stretch h-full m-0 p-0 list-none" role="list">
             {navLinks.map((link, index) => {
               const isActive = location.pathname === link.path;
               const isFirst = index === 0;
-              // Only show left border on HOME (first link) when HOME is active (or hovered); on other tabs, suppress it
               const showLeftBorder = !isFirst || isActive;
 
               return (
@@ -144,18 +102,18 @@ export const Navbar: React.FC = () => {
           </ul>
         </nav>
 
-        {/* Far Right: LAUNCH Block (Width 230px on md+, border-l-4, coral bg #ff8066) */}
+        {/* Far Right: LAUNCH Block (Responsive width, border-l-4, coral bg #ff8066) */}
         <Link
           to="/viewer"
-          className="px-6 md:px-10 h-[100px] flex justify-center items-center w-auto md:w-[230px] border-l-4 border-[#27272a] bg-[#ff8066] hover:bg-[#ff947d] transition-colors gap-x-6 text-[#27272a] select-none"
+          className="px-4 sm:px-6 md:px-10 h-full flex justify-center items-center w-auto min-[991px]:w-[230px] border-l-4 border-[#27272a] bg-[#ff8066] hover:bg-[#ff947d] transition-colors gap-x-3 md:gap-x-6 text-[#27272a] select-none z-20"
           title="Launch ZeroTouch Medical DICOM Viewer"
         >
-          <span className="hidden md:block">
+          <span className="hidden sm:inline">
             <span
               className="uppercase tracking-wide"
               style={{
                 fontFamily: '"Pratico Variable", sans-serif',
-                fontSize: '20px',
+                fontSize: '18px',
                 fontWeight: 600,
                 lineHeight: '150%',
                 color: '#27272a',
@@ -166,8 +124,7 @@ export const Navbar: React.FC = () => {
           </span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="42"
-            height="46"
+            className="w-7 h-7 sm:w-9 sm:h-9 min-[991px]:w-[42px] min-[991px]:h-[46px]"
             viewBox="0 0 52 56"
             fill="none"
             aria-hidden="true"
@@ -182,35 +139,83 @@ export const Navbar: React.FC = () => {
         </Link>
       </header>
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div className="min-[991px]:hidden bg-[#f3f4fb] border-t-4 border-[#27272a] w-full flex flex-col">
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.name}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-8 py-5 text-xl font-bold uppercase tracking-wider border-b-2 border-[#27272a]/20 ${
-                  isActive ? 'bg-[#6f7bd4] text-white' : 'text-[#27272a]'
-                }`}
-                style={{ fontFamily: '"Pratico Variable", sans-serif' }}
-              >
-                {link.name}
-              </Link>
-            );
-          })}
-          <Link
-            to="/viewer"
-            onClick={() => setMobileMenuOpen(false)}
-            className="bg-[#ff8066] text-[#27272a] px-8 py-5 text-center font-black text-xl uppercase tracking-wider border-b-4 border-[#27272a]"
-            style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+      {/* Mobile Drawer Menu (Exact Loz mobile drawer layout: Full viewport backdrop + horizontal slide-in navigation) */}
+      <div
+        className={`min-[991px]:hidden fixed inset-0 top-[76px] sm:top-[88px] z-50 transition-all duration-300 ease-in-out ${
+          mobileMenuOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
+        }`}
+        aria-hidden={!mobileMenuOpen}
+      >
+        {/* Backdrop overlay */}
+        <div
+          className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+            mobileMenuOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+
+        {/* Sliding Menu Drawer Container */}
+        <div
+          className={`relative z-10 flex flex-col w-full h-[calc(100vh-76px)] sm:h-[calc(100vh-88px)] overflow-y-auto transform transition-transform duration-300 ease-in-out ${
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          {/* Solid Menu Content Box */}
+          <div
+            className="w-full bg-[#f3f4fb] border-b-4 border-[#27272a] shadow-[0_16px_32px_rgba(0,0,0,0.35)] flex flex-col shrink-0"
+            onClick={(e) => e.stopPropagation()}
           >
-            LAUNCH VIEWER WORKSPACE
-          </Link>
+            <nav className="flex flex-col w-full" role="navigation">
+              {navLinks.map((link) => {
+                const isActive = location.pathname === link.path;
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-8 py-4 sm:py-5 text-xl sm:text-2xl font-black uppercase tracking-wider border-b-2 border-[#27272a] transition-colors flex items-center justify-between ${
+                      isActive ? 'bg-[#6f7bd4] text-white' : 'text-[#27272a] hover:bg-[#6f7bd4]/10'
+                    }`}
+                    style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+                  >
+                    <span>{link.name}</span>
+                    <span className="text-xl opacity-60">→</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Launch CTA inside mobile drawer */}
+            <div className="p-4 sm:p-6 bg-white border-b-4 border-[#27272a] flex justify-center">
+              <Link
+                to="/viewer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="loz-button loz-button-primary w-full text-center text-xs sm:text-sm py-2.5 sm:py-3.5 leading-snug"
+              >
+                LAUNCH VIEWER WORKSPACE
+              </Link>
+            </div>
+
+            {/* 0TOUCH touchless medical imaging utility bar - directly below Launch Viewer button */}
+            <div className="bg-[#27272a] text-white p-5 sm:p-6 flex flex-col gap-2.5 text-center">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
+                0TOUCH &bull; TOUCHLESS MEDICAL IMAGING
+              </span>
+              <p className="text-xs text-zinc-400">
+                Operate DICOM scans with sterile touchless hand gestures.
+              </p>
+            </div>
+          </div>
+
+          {/* Transparent clickable exit space below menu */}
+          <div
+            className="flex-1 min-h-[60px] cursor-pointer"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 };

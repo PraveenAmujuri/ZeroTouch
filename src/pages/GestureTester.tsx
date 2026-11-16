@@ -6,6 +6,8 @@ import {
   OperationMode,
   FingerStates,
 } from '../gestures';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { DesktopRequired } from '../components/DesktopRequired';
 import { LANDMARK_IDS } from '../gestures/landmarkUtils';
 import {
   Camera,
@@ -35,6 +37,8 @@ const CONNECTIONS: [number, number][] = [
 ];
 
 export const GestureTester: React.FC = () => {
+  const isMobile = useIsMobile(768);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const controllerRef = useRef<GestureController | null>(null);
@@ -51,6 +55,8 @@ export const GestureTester: React.FC = () => {
 
   // Initialize GestureController
   useEffect(() => {
+    if (isMobile) return;
+
     const controller = new GestureController();
     controllerRef.current = controller;
 
@@ -88,7 +94,22 @@ export const GestureTester: React.FC = () => {
         stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [isMobile]);
+
+  // Teardown and stop webcam immediately if resized to mobile
+  useEffect(() => {
+    if (isMobile) {
+      if (controllerRef.current) {
+        controllerRef.current.stop();
+      }
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      setIsStreaming(false);
+    }
+  }, [isMobile]);
 
   // Start Camera Stream
   const startCamera = useCallback(async () => {
@@ -199,6 +220,11 @@ export const GestureTester: React.FC = () => {
     [OperationMode.WINDOWING]: <Sliders className="w-5 h-5 text-amber-400" />,
     [OperationMode.PANNING]: <Move className="w-5 h-5 text-purple-400" />,
   };
+
+  // Mobile screen restriction: Render Desktop Experience Required screen
+  if (isMobile) {
+    return <DesktopRequired />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0e0e12] text-white pt-24 pb-16 px-4 md:px-8 selection:bg-orange-500 selection:text-white">
