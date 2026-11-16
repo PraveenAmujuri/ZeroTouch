@@ -160,18 +160,9 @@ export const Home: React.FC = () => {
                   </h2>
                 </div>
 
-                {/* Line 3: Permanent static text (Heavy Bold Weight) */}
-                <div className="banner__text text-center rte mt-2">
-                  <h3
-                    className="text-[#262929] leading-none uppercase whitespace-nowrap tracking-tight"
-                    style={{
-                      fontFamily: '"Pratico Variable", sans-serif',
-                      fontSize: 'clamp(46px, 4.6vw, 76px)',
-                      fontWeight: 900,
-                    }}
-                  >
-                    OTOUCH
-                  </h3>
+                {/* Line 3: Permanent static text / Solid Logo */}
+                <div className="banner__text text-center flex items-center justify-center mt-2">
+                  <Logo className="h-[44px] sm:h-[54px] md:h-[64px] lg:h-[72px] w-auto text-[#262929]" />
                 </div>
 
                 {/* Description below headline */}
