@@ -168,6 +168,12 @@ export const Features: React.FC = () => {
          ========================================================================= */}
       <div className="w-full relative flex-1">
         
+        {/* Top-left gap filler: fills the 100px gap with blue when navbar scrolls up out of view */}
+        <div
+          className="hidden min-[991px]:block fixed top-0 left-0 w-1/2 h-[104px] bg-[#6f7bd4] border-r-4 border-[#27272a] z-10 pointer-events-none"
+          aria-hidden="true"
+        />
+
         {/* ================= LEFT COLUMN: CLEAN FIXED GESTURE GALLERY ================= */}
         <div
           className="w-full min-[991px]:w-1/2 min-[991px]:fixed min-[991px]:top-[100px] min-[991px]:left-0 min-[991px]:h-[calc(100vh-100px)] bg-[#6f7bd4] border-b-4 min-[991px]:border-b-0 min-[991px]:border-r-4 border-[#27272a] z-10 flex flex-col justify-between p-6 sm:p-8 lg:p-10 select-none overflow-hidden"
@@ -259,7 +265,7 @@ export const Features: React.FC = () => {
 
 
         {/* ================= RIGHT COLUMN: SIMPLE & CLEAN PRODUCT OPTIONS ================= */}
-        <div className="w-full min-[991px]:w-1/2 min-[991px]:ml-auto bg-white border-l-0 min-[991px]:border-l-4 border-[#27272a]">
+        <div className="w-full min-[991px]:w-1/2 min-[991px]:ml-auto bg-white border-l-0 min-[991px]:border-l-4 border-[#27272a] flex flex-col justify-between">
           
           <div className="p-8 sm:p-12 lg:p-16 flex flex-col justify-between">
             
@@ -390,7 +396,7 @@ export const Features: React.FC = () => {
 
 
             {/* STEP 3: STABILIZATION PIPELINE */}
-            <div className="mb-10">
+            <div className="mb-8">
               <span
                 className="block text-[#27272a] mb-4 text-left"
                 style={{
@@ -408,34 +414,48 @@ export const Features: React.FC = () => {
                     ✓
                   </div>
                   <span className="block font-black text-sm uppercase text-[#27272a]">
-                    Adaptive Rate Limit
+                    1€ Adaptive Jitter Filtering
                   </span>
                   <span className="block text-xs text-[#27272a]/70 mt-1">
-                    Temporal anti-repeat rate limit (~0.28s) prevents runaway.
+                    Suppresses webcam landmark jitter with adaptive low-pass filtering, maintaining stable hand tracking during gesture recognition.
                   </span>
                 </div>
 
                 <div className="p-4 border-2 border-[#27272a] bg-white">
                   <span className="block font-black text-sm uppercase text-[#27272a]">
-                    Dead-Zone Filter
+                    Temporal Anti-Repeat Control
                   </span>
                   <span className="block text-xs text-[#27272a]/70 mt-1">
-                    Immune to inadvertent hand tremor and repositioning.
+                    Controlled gesture timing and repeat intervals prevent accidental duplicate triggers and runaway interactions.
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Launch CTA Button */}
-            <div className="pt-4 border-t-2 border-[#27272a]">
-              <Link
-                to="/viewer"
-                className="loz-button loz-button-primary w-full text-center text-lg uppercase tracking-wider !py-4 shadow-[4px_4px_0px_#27272a]"
+          </div>
+
+          {/* Launch CTA Box Button: Exact full-width right section, default dark zinc-800, hover coral #ff8066, no black border-t bar */}
+          <div className="w-full pb-8 sm:pb-12 bg-white">
+            <Link
+              to="/viewer"
+              className="w-full bg-[#27272a] hover:bg-[#ff8066] text-white hover:text-[#27272a] border-y-4 border-[#27272a] px-8 sm:px-12 py-7 sm:py-8 flex items-center justify-between transition-colors duration-300 select-none group cursor-pointer"
+            >
+              <span
+                className="font-extrabold uppercase tracking-tight text-xl sm:text-2xl md:text-3xl lg:text-4xl text-left"
+                style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '110%' }}
               >
                 TEST GESTURES IN LIVE DICOM VIEWER
-              </Link>
-            </div>
-
+              </span>
+              <span className="flex items-center gap-3 shrink-0 ml-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 448 512"
+                  className="w-6 h-6 fill-white group-hover:fill-[#27272a] transition-all duration-300 group-hover:translate-x-2 shrink-0"
+                >
+                  <path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z" />
+                </svg>
+              </span>
+            </Link>
           </div>
 
           {/* =========================================================================
@@ -450,26 +470,30 @@ export const Features: React.FC = () => {
                   className="text-white text-2xl sm:text-3xl font-normal mb-6 text-center"
                   style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '115%' }}
                 >
-                  Sign up for updates, <strong className="text-[#74d2c2] font-normal">discounts</strong><br className="hidden sm:inline" /> and giveaways!
+                  Explore my work, <strong className="text-[#74d2c2] font-normal">projects</strong><br className="hidden sm:inline" /> and experiments!
                 </h2>
 
-                <div className="relative flex items-stretch border-2 border-black bg-white w-full max-w-md shadow-none">
-                  <input
-                    type="email"
-                    placeholder="Your email address"
-                    className="w-full bg-white text-black placeholder:text-zinc-500 px-5 py-3 text-sm focus:outline-none"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Subscribe"
-                    className="bg-[#ff8066] hover:bg-[#6f7bd4] text-black hover:text-white px-5 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0 cursor-pointer"
+                <a
+                  href="https://praveen-amujuri-portfolio.vercel.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group w-full max-w-md relative flex items-stretch border-2 border-black bg-white shadow-none transition-all duration-200 hover:shadow-[4px_4px_0px_#74d2c2] select-none cursor-pointer"
+                  aria-label="View My Portfolio"
+                >
+                  <div
+                    className="w-full bg-white text-black px-5 py-3 text-sm font-bold uppercase tracking-wider flex items-center justify-start group-hover:text-[#6f7bd4] transition-colors"
+                    style={{ fontFamily: '"Pratico Variable", sans-serif' }}
                   >
-                    <svg width="24" height="20" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-4">
+                    VIEW MY PORTFOLIO
+                  </div>
+                  <div
+                    className="bg-[#ff8066] group-hover:bg-[#6f7bd4] text-black group-hover:text-white px-5 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0"
+                  >
+                    <svg width="24" height="20" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-4 transition-transform duration-200 group-hover:translate-x-1">
                       <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
                     </svg>
-                  </button>
-                </div>
+                  </div>
+                </a>
               </div>
 
               {/* Interactive Animated SVG 0Touch Footer Logo with generous vertical padding */}
@@ -489,7 +513,7 @@ export const Features: React.FC = () => {
               <p className="text-[11px] text-zinc-500 mt-6">
                 © 2026 0Touch. All rights reserved.{' '}
                 <a
-                  href="https://praveenai.tech/"
+                  href="https://praveen-amujuri-portfolio.vercel.app"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#74d2c2] hover:underline"

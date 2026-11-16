@@ -17,27 +17,36 @@ export const Navbar: React.FC = () => {
       headerHeight.current = navContainerRef.current.offsetHeight || 100;
     }
 
+    let ticking = false;
+
     const handleScroll = () => {
-      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-      const hHeight = headerHeight.current;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+          const hHeight = headerHeight.current || 100;
+          const scrollDiff = currentScrollY - lastScrollY.current;
 
-      // 1. At the top of the website (scroll position within initial header height):
-      // Natural normal scroll along with document flow (no sticky jump)
-      if (currentScrollY <= hHeight) {
-        setHeaderState('normal');
-      }
-      // 2. Scrolled past header and scrolling down:
-      // Hide the header (sticks offscreen above viewport)
-      else if (currentScrollY > lastScrollY.current && currentScrollY > hHeight) {
-        setHeaderState('hidden');
-      }
-      // 3. Scrolled past header and scrolling up:
-      // Immediately reveal header smoothly downward
-      else if (currentScrollY < lastScrollY.current && currentScrollY > hHeight) {
-        setHeaderState('reveal');
-      }
+          // 1. At the very top of the website (within 10px):
+          // Settle into natural document flow without any jump, flicker, or layout shift
+          if (currentScrollY <= 10) {
+            setHeaderState('normal');
+          }
+          // 2. Scrolled past header and scrolling down:
+          // Require at least 3px downward delta to prevent micro-jitter
+          else if (scrollDiff > 3 && currentScrollY > hHeight) {
+            setHeaderState('hidden');
+          }
+          // 3. Deliberately scrolling up:
+          // Require at least 8px upward movement before revealing
+          else if (scrollDiff < -8) {
+            setHeaderState('reveal');
+          }
 
-      lastScrollY.current = currentScrollY;
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

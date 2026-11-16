@@ -75,16 +75,6 @@ const HeroVideoCanvas: React.FC = () => {
 export const Home: React.FC = () => {
   const [selectedModality, setSelectedModality] = useState<'echo' | 'angio' | 'mri'>('echo');
   const [streamMode, setStreamMode] = useState<'realtime' | 'buffered'>('realtime');
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail('');
-    }
-  };
 
   return (
     <main id="MainContent" className="content-for-layout focus-none w-full bg-[#f3f4fb]" role="main" tabIndex={-1}>
@@ -429,7 +419,7 @@ export const Home: React.FC = () => {
                           Gesture Recognition &amp; Smoothing
                         </span>
                         <span className="text-xs text-[#27272a]/70 font-medium">
-                          Stable gesture detection with filtering and dead-zone stabilization.
+                          Stable two-hand gesture detection with 1€ adaptive low-pass filtering and temporal anti-repeat confirmation.
                         </span>
                       </div>
                     </div>
@@ -607,33 +597,27 @@ export const Home: React.FC = () => {
                 Explore my work, <strong className="text-[#74d2c2] font-normal">projects</strong><br className="hidden sm:inline" /> and experiments!
               </h2>
 
-              <form onSubmit={handleSubscribe} className="w-full max-w-[560px]">
-                <div className="relative flex items-stretch border-2 border-black bg-white w-full shadow-none">
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Your email address"
-                    className="w-full bg-white text-black placeholder:text-zinc-500 px-6 py-3.5 md:py-4 text-base md:text-lg focus:outline-none"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  />
-                  <button
-                    type="submit"
-                    aria-label="Subscribe"
-                    className="bg-[#ff8066] hover:bg-[#6f7bd4] text-black hover:text-white px-6 md:px-7 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0 cursor-pointer"
-                  >
-                    <svg width="28" height="24" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-5">
-                      <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
-                    </svg>
-                  </button>
+              <a
+                href="https://praveen-amujuri-portfolio.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group w-full max-w-[560px] relative flex items-stretch border-2 border-black bg-white shadow-none transition-all duration-200 hover:shadow-[4px_4px_0px_#74d2c2] select-none cursor-pointer"
+                aria-label="View My Portfolio"
+              >
+                <div
+                  className="w-full bg-white text-black px-6 py-3.5 md:py-4 text-base md:text-lg font-bold uppercase tracking-wider flex items-center justify-start group-hover:text-[#6f7bd4] transition-colors"
+                  style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+                >
+                  VIEW MY PORTFOLIO
                 </div>
-                {subscribed && (
-                  <p className="text-[#74d2c2] text-sm mt-3 text-center font-bold">
-                    Thank you for subscribing!
-                  </p>
-                )}
-              </form>
+                <div
+                  className="bg-[#ff8066] group-hover:bg-[#6f7bd4] text-black group-hover:text-white px-6 md:px-7 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0"
+                >
+                  <svg width="28" height="24" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-5 transition-transform duration-200 group-hover:translate-x-1">
+                    <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
+                  </svg>
+                </div>
+              </a>
             </div>
 
             {/* Interactive Animated SVG 0Touch Footer Logo (matching The Loz) with generous vertical padding */}
@@ -653,7 +637,7 @@ export const Home: React.FC = () => {
             <p className="text-xs text-zinc-500 mt-2">
               © 2026 0Touch. All rights reserved.{' '}
               <a
-                href="https://praveenai.tech/"
+                href="https://praveen-amujuri-portfolio.vercel.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#74d2c2] hover:underline"
