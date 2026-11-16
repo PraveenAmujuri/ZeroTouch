@@ -508,11 +508,11 @@ export const Home: React.FC = () => {
                     </div>
                     <Link
                       to="/features"
-                      className="loz-button !bg-[#6f7bd4] !text-white hover:!bg-[#27272a] hover:!text-white border-2 border-[#27272a] inline-flex items-center gap-2 text-xs sm:text-base transition-all duration-200"
+                      className="loz-button loz-button-secondary !text-[#6f7bd4] !border-[#6f7bd4] hover:!bg-[#6f7bd4] hover:!text-white inline-flex text-xs sm:text-base group/gestures"
                     >
                       EXPLORE GESTURES
                       <span className="relative -top-[0.15rem]">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="16" width="10" viewBox="0 0 320 512" className="fill-current">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="16" width="10" viewBox="0 0 320 512" className="!fill-[#6f7bd4] group-hover/gestures:!fill-white transition-colors">
                           <path d="M317.3 256l-22.6 22.6-192 192L80 493.3 34.7 448l22.6-22.6L226.7 256 57.4 86.6 34.7 64 80 18.7l22.6 22.6 192 192L317.3 256z" />
                         </svg>
                       </span>
