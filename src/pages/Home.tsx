@@ -406,8 +406,15 @@ export const Home: React.FC = () => {
       <div id="shopify-section-template--17036177244384__c483e1a6-7b93-4203-a2e9-ec33e1aa70e8" className="shopify-section">
         <div className="marquee-text-section marquee-container bg-[#27272a] pt-16 pb-16 border-b-4 border-[#27272a]">
           <div className="marquee">
-            <div className="marquee-content select-none">
-              &nbsp;0Touch Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.&nbsp;0Touch Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.
+            <div className="marquee-content select-none flex items-center whitespace-nowrap">
+              <span className="inline-flex items-center gap-4">
+                <Logo className="h-[0.8em] w-auto inline-block text-[#6f7bd4]" />
+                <span>Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.&nbsp;</span>
+              </span>
+              <span className="inline-flex items-center gap-4">
+                <Logo className="h-[0.8em] w-auto inline-block text-[#6f7bd4]" />
+                <span>Touchless Medical Imaging. Intuitive Hand Gestures. DICOM Studies Navigation. Real-Time Hand Tracking.&nbsp;</span>
+              </span>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FooterLogo } from '../components/FooterLogo';
+import { Logo } from '../components/Logo';
 
 export const Features: React.FC = () => {
   // Active mode: 0 = Slice Nav, 1 = Continuous Zoom, 2 = Windowing, 3 = Panning
