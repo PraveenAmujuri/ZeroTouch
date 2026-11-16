@@ -6,6 +6,7 @@ __pycache__/
 *.sqlite3
 *.log
 .env
+.env*.local
 .vscode/
 
 # Build artifacts & dependencies

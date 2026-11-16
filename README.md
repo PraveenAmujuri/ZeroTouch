@@ -15,9 +15,9 @@
 
 - **100% Client-Side Browser Execution**: Real-time hand tracking and DICOM parsing happen completely inside the browser using MediaPipe Tasks Vision and HTML5 Canvas. No video streams or protected medical images ever leave the user's device.
 - **Sterile Two-Handed Interaction Pipeline**: Based on operating room human-computer interaction (HCI) research. Employs matching finger-count mode selection and complementary hand postures to eliminate accidental triggers.
-- **1€ Adaptive Jitter Filtering**: Suppresses high-frequency sensor noise and micro-tremor when hands are resting ($f_{c,min} = 1.2\text{ Hz}$), while dynamically dropping latency to near zero during motion ($\beta = 0.50$, $f_{c,d} = 1.0\text{ Hz}$).
+- **1€ Adaptive Jitter Filtering**: Suppresses high-frequency sensor noise and micro-tremor when hands are resting ($f_{c,min} = 1.2\text{ Hz}$). Dynamically increases the cutoff during faster movements to reduce smoothing lag while maintaining jitter suppression ($\beta = 0.50$, $f_{c,d} = 1.0\text{ Hz}$).
 - **Temporal Anti-Repeat & Stability Control**: Enforces hold confirmation timers, discrete stepping cadences ($0.28\text{s}$), and mandatory neutral-state rearming to prevent runaway slice advancement.
-- **Broad DICOM Modality Support**: Decodes multi-frame cine series and single slices supporting 8-bit/16-bit signed/unsigned grayscale (`MONOCHROME1`, `MONOCHROME2`) and RGB / Palette Color lookup tables (`PALETTE COLOR`).
+- **DICOM Image Decoding**: Decodes multi-frame cine studies and single slices supporting 8-bit and 16-bit signed/unsigned grayscale (`MONOCHROME1`, `MONOCHROME2`), RGB, and Palette Color lookup tables (`PALETTE COLOR`).
 
 ---
 
@@ -30,7 +30,7 @@ Modes are engaged by holding matching finger counts on both hands for **~0.60s**
 | **Slice Navigation** | **1 + 1** (Index fingers) | Step Backward 1 Slice | Step Forward 1 Slice | Continuous repeat at $0.28\text{s}$ intervals |
 | **Continuous Zoom** | **2 + 2** (Index & Middle) | Zoom In (Magnify) | Zoom Out (Demagnify) | Smooth scaling throttled at $0.03\text{s}$ (~33 FPS) |
 | **Clinical Windowing** | **3 + 3** (Three fingers) | Previous Calibrated Preset | Next Calibrated Preset | Cycles presets (Abdomen, Bone, Lung, Brain) |
-| **Step-Based Panning** | **4 + 4** (Four fingers) | Pan Left / Up | Pan Right / Down | Cardinal stepping (1+1 Left, 2+2 Right, 3+3 Up, 4+4 Down) |
+| **Step-Based Panning** | **4 + 4** (Four fingers) | Pan Left (`-12px`) / Step | Pan Right (`+12px`) / Step | Matching counts: 1+1 Left, 2+2 Right, 3+3 Up, 4+4 Down |
 | **Window Preset Quick-Cycle** | **5 + 5** (Both hands open) | Advance viewing preset | Advance viewing preset | Hold for $0.45\text{s}$ followed by $0.60\text{s}$ cooldown |
 | **Safety Rest / Neutral** | **Fist + Fist** or Relaxed | Neutral clutch / Stop | Neutral clutch / Stop | Immediately stops active viewer actions |
 
@@ -133,10 +133,10 @@ npm run preview
 
 ## Reference Python Desktop Prototype
 
-The repository includes the original Python standalone prototype in `core/` and `main.py`, which informed the browser-native TypeScript engine:
+The repository includes the original Python standalone prototype in `core/` and `main.py`, which served as the initial reference implementation:
 
 ```bash
-# 1. Activate the verified virtual environment
+# 1. Activate the Python virtual environment
 .\zerotouch_env\Scripts\activate
 
 # 2. Run the desktop prototype with PyDICOM viewer

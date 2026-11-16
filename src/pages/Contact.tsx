@@ -1,8 +1,61 @@
 import React, { useState } from 'react';
-import { Mail, Github, Linkedin, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Github, Linkedin, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export const Contact: React.FC = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: 'General Inquiry',
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || `Failed to send message (${response.status})`);
+      }
+
+      setSubmitted(true);
+      setFormData({
+        name: '',
+        email: '',
+        subject: 'General Inquiry',
+        message: '',
+      });
+    } catch (err: any) {
+      console.error('Contact form submission error:', err);
+      setErrorMessage(
+        err?.message || 'Failed to deliver message. Please check your network or try again later.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full bg-[#f7f7f9] py-16 px-6 md:px-16 lg:px-28">
@@ -31,6 +84,7 @@ export const Contact: React.FC = () => {
                 Thank you for reaching out. I will get back to you as soon as possible.
               </p>
               <button
+                type="button"
                 onClick={() => setSubmitted(false)}
                 className="btn-secondary mt-4 text-xs font-bold uppercase"
               >
@@ -38,67 +92,106 @@ export const Contact: React.FC = () => {
               </button>
             </div>
           ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSubmitted(true);
-              }}
-              className="flex flex-col gap-6"
-            >
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+              {errorMessage && (
+                <div className="p-4 bg-red-50 border-2 border-red-500 text-red-800 text-sm flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-bold block">Message Delivery Failed</span>
+                    <span className="text-xs text-red-700">{errorMessage}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-700">
+                  <label htmlFor="name" className="text-xs font-black uppercase tracking-wider text-zinc-700">
                     Full Name *
                   </label>
                   <input
+                    id="name"
+                    name="name"
                     type="text"
                     required
+                    disabled={isSubmitting}
+                    value={formData.name}
+                    onChange={handleChange}
                     placeholder="Your name"
-                    className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500"
+                    className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500 disabled:opacity-60"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-700">
+                  <label htmlFor="email" className="text-xs font-black uppercase tracking-wider text-zinc-700">
                     Email Address *
                   </label>
                   <input
+                    id="email"
+                    name="email"
                     type="email"
                     required
+                    disabled={isSubmitting}
+                    value={formData.email}
+                    onChange={handleChange}
                     placeholder="your.email@example.com"
-                    className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500"
+                    className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500 disabled:opacity-60"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-700">
+                <label htmlFor="subject" className="text-xs font-black uppercase tracking-wider text-zinc-700">
                   Subject
                 </label>
-                <select className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500">
-                  <option>General Inquiry</option>
-                  <option>Project Feedback</option>
-                  <option>Bug Report</option>
-                  <option>Collaboration</option>
-                  <option>Research Discussion</option>
-                  <option>Other</option>
+                <select
+                  id="subject"
+                  name="subject"
+                  disabled={isSubmitting}
+                  value={formData.subject}
+                  onChange={handleChange}
+                  className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500 disabled:opacity-60"
+                >
+                  <option value="General Inquiry">General Inquiry</option>
+                  <option value="Project Feedback">Project Feedback</option>
+                  <option value="Bug Report">Bug Report</option>
+                  <option value="Collaboration">Collaboration</option>
+                  <option value="Research Discussion">Research Discussion</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-700">
+                <label htmlFor="message" className="text-xs font-black uppercase tracking-wider text-zinc-700">
                   Message *
                 </label>
                 <textarea
+                  id="message"
+                  name="message"
                   required
                   rows={4}
+                  disabled={isSubmitting}
+                  value={formData.message}
+                  onChange={handleChange}
                   placeholder="Your message or questions about ZeroTouch..."
-                  className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500"
+                  className="p-3.5 bg-zinc-50 border-2 border-zinc-700 font-medium text-zinc-900 focus:outline-none focus:border-secondary-500 disabled:opacity-60"
                 />
               </div>
 
-              <button type="submit" className="btn-primary self-start gap-2 mt-2">
-                <Send className="w-4 h-4" />
-                <span>Send Message</span>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-primary self-start gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Send Message</span>
+                  </>
+                )}
               </button>
             </form>
           )}
