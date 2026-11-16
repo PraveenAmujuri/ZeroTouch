@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { parseDICOMBuffer, DICOMStudyMeta } from '../utils/dicomLoader';
 import { extractDicomFilesFromZip } from '../utils/zipLoader';
+import { Logo } from '../components/Logo';
 import {
   saveStudyToCache,
   getRecentStudies,
@@ -738,12 +739,15 @@ export const Viewer: React.FC = () => {
                 isGestureEnabled && isCameraReady ? 'bg-[#FF8066] animate-pulse shadow-[0_0_8px_#FF8066]' : 'bg-[#FF8066]/60'
               }`}
             />
-            <span
-              className="text-sm tracking-tight text-white uppercase whitespace-nowrap"
-              style={{ fontFamily: '"Pratico Variable", sans-serif', fontWeight: 900 }}
-            >
-              0TOUCH <span className="text-[#FF8066]">WORKSPACE</span>
-            </span>
+            <div className="flex items-center gap-2 select-none">
+              <Logo className="h-4 sm:h-5 w-auto text-white" />
+              <span
+                className="text-xs sm:text-sm tracking-tight text-[#74d2c2] font-black uppercase whitespace-nowrap"
+                style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+              >
+                WORKSPACE
+              </span>
+            </div>
           </div>
         </div>
 

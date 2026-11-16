@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Logo } from './Logo';
 
 type HeaderState = 'normal' | 'hidden' | 'reveal';
 
@@ -85,24 +86,14 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
 
-        {/* Branding: 0TOUCH rendered with crisp geometric letterforms matching LOZ */}
+        {/* Branding: 0Touch vector logo */}
         <div className="flex items-center absolute left-16 md:left-20 min-[991px]:left-0 min-[991px]:max-h-[100px] min-[991px]:h-[100px] h-full">
           <Link
             to="/"
             className="pl-6 md:pl-8 lg:pl-10 flex items-center focus:outline-none select-none"
+            aria-label="0Touch Home"
           >
-            <span
-              style={{
-                fontFamily: '"Pratico Variable", sans-serif',
-                fontWeight: 900,
-                fontSize: '44px',
-                letterSpacing: '-1.5px',
-                color: '#262929',
-              }}
-              className="leading-none uppercase"
-            >
-              0TOUCH
-            </span>
+            <Logo className="h-8 md:h-9 w-auto text-[#262929]" />
           </Link>
         </div>
 

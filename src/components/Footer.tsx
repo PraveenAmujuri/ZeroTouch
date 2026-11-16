@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Mail, ArrowRight } from 'lucide-react';
+import { Logo } from './Logo';
 
 export const Footer: React.FC = () => {
   return (
@@ -49,13 +50,8 @@ export const Footer: React.FC = () => {
           
           {/* Brand info */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-secondary-500 border-2 border-white flex items-center justify-center font-black text-sm text-zinc-950">
-                0T
-              </div>
-              <span className="font-display font-black text-xl tracking-tighter text-white">
-                ZEROTOUCH
-              </span>
+            <div className="flex items-center">
+              <Logo className="h-7 w-auto text-[#74d2c2]" />
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Sterile touchless DICOM viewer interface engineered for operating rooms and surgical suites.

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FooterLogo } from '../components/FooterLogo';
+import { Logo } from '../components/Logo';
 
 export const Home: React.FC = () => {
   const [selectedModality, setSelectedModality] = useState<'echo' | 'angio' | 'mri'>('echo');
@@ -193,21 +195,11 @@ export const Home: React.FC = () => {
             
             <Link
               to="/viewer"
-              className="bg-[#ff8066] border-4 border-[#27272a] px-14 py-6 -rotate-[4.1deg] hover:rotate-0 transition-transform duration-200"
+              className="bg-[#ff8066] border-4 border-[#27272a] px-10 sm:px-14 py-5 sm:py-6 -rotate-[4.1deg] hover:rotate-0 transition-transform duration-200 inline-flex items-center justify-center"
               aria-label="Launch 0Touch"
             >
-              <div className="rotate-[4.1deg] hover:rotate-0 transition-transform duration-200">
-                <span
-                  style={{
-                    fontFamily: '"Pratico Variable", sans-serif',
-                    fontSize: '44px',
-                    fontWeight: 900,
-                    color: '#262929',
-                  }}
-                  className="uppercase block leading-none select-none tracking-tight"
-                >
-                  0Touch
-                </span>
+              <div className="rotate-[4.1deg] hover:rotate-0 transition-transform duration-200 flex items-center justify-center">
+                <Logo className="h-9 sm:h-11 w-auto text-[#262929]" />
               </div>
             </Link>
           </div>
@@ -257,20 +249,22 @@ export const Home: React.FC = () => {
             {/* Right: Product Info & Radios */}
             <div className="product__info-wrapper mb-10 md:mb-0 grid__item">
               <div className="product__info-container flex flex-col text-left">
-                <p className="product__text inline-richtext caption-with-letter-spacing text-xs font-bold uppercase tracking-widest text-[#27272a] mb-2">
-                  <strong>0Touch Medical Scan</strong>
+                <p className="product__text inline-richtext caption-with-letter-spacing text-xs font-bold uppercase tracking-widest text-[#27272a] mb-2 flex items-center gap-1.5">
+                  <Logo className="h-3.5 w-auto text-[#27272a]" />
+                  <span>Medical Scan</span>
                 </p>
 
                 <div className="pb-4 flex flex-row justify-between items-center">
                   <h2
-                    className="product__title !mb-0 block text-[#27272a] leading-none"
+                    className="product__title !mb-0 text-[#27272a] leading-none flex items-center gap-3 flex-wrap"
                     style={{
                       fontFamily: '"Pratico Variable", sans-serif',
-                      fontSize: '48px',
+                      fontSize: '44px',
                       fontWeight: 600,
                     }}
                   >
-                    0Touch Gesture Engine
+                    <Logo className="h-8 md:h-10 w-auto text-[#27272a]" />
+                    <span>Gesture Engine</span>
                   </h2>
                 </div>
 
@@ -496,7 +490,8 @@ export const Home: React.FC = () => {
                         lineHeight: '1.25',
                       }}
                     >
-                      0Touch Gesture Engine
+                      <Logo className="h-8 md:h-10 w-auto text-[#27272a] inline-block align-middle mr-2" />
+                      Gesture Engine
                     </h2>
                     <div
                       className="image-with-text__text rte text-body !my-6 text-[#27272a]/80"
@@ -553,7 +548,7 @@ export const Home: React.FC = () => {
                   fontWeight: 600,
                 }}
               >
-                Stay connected with <strong>0Touch</strong>.
+                Stay connected with <Logo className="h-7 md:h-8 w-auto text-[#74d2c2] inline-block align-middle mx-1.5" />
               </h2>
               <p className="text-zinc-400 text-sm md:text-base mb-6 text-center">
                 Follow the development of 0Touch, explore new capabilities and stay informed about upcoming improvements.
@@ -578,18 +573,9 @@ export const Home: React.FC = () => {
               </form>
             </div>
 
-            {/* Giant Footer 0Touch Wordmark */}
+            {/* Interactive Animated SVG 0Touch Footer Logo (matching The Loz) */}
             <div className="w-full flex justify-center mt-2 select-none">
-              <span
-                style={{
-                  fontFamily: '"Pratico Variable", sans-serif',
-                  fontSize: 'clamp(48px, 12vw, 140px)',
-                  fontWeight: 900,
-                }}
-                className="text-white uppercase tracking-tighter leading-none block"
-              >
-                0Touch
-              </span>
+              <FooterLogo className="max-w-[320px] sm:max-w-[500px] md:max-w-[720px] lg:max-w-[850px]" />
             </div>
 
             {/* Footer Navigation Links */}
@@ -598,7 +584,7 @@ export const Home: React.FC = () => {
               <Link to="/features" className="hover:text-white">Product</Link>
               <Link to="/docs" className="hover:text-white">Docs</Link>
               <Link to="/contact" className="hover:text-white">Contact</Link>
-              <Link to="/viewer" className="hover:text-[#ff8066]">Launch</Link>
+              <Link to="/viewer" className="hover:text-[#74d2c2]">Launch</Link>
             </div>
 
             <p className="text-xs text-zinc-500 mt-2">
@@ -607,7 +593,7 @@ export const Home: React.FC = () => {
                 href="https://praveenai.tech/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#ff8066] hover:underline"
+                className="text-[#74d2c2] hover:underline"
               >
                 praveenai.tech
               </a>

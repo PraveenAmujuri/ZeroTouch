@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { FooterLogo } from '../components/FooterLogo';
 
 export const Features: React.FC = () => {
   // Active mode: 0 = Slice Nav, 1 = Continuous Zoom, 2 = Windowing, 3 = Panning
@@ -449,7 +450,7 @@ export const Features: React.FC = () => {
                   className="text-white text-2xl sm:text-3xl font-extrabold mb-4"
                   style={{ fontFamily: '"Pratico Variable", sans-serif' }}
                 >
-                  Sign up for updates on <strong>0Touch</strong> technology
+                  Sign up for updates on <Logo className="h-5 sm:h-6 w-auto text-[#74d2c2] inline-block align-middle mx-1" /> technology
                 </h2>
 
                 <div className="w-full flex items-center border-2 border-white rounded-full overflow-hidden bg-white/10 p-1">
@@ -468,18 +469,9 @@ export const Features: React.FC = () => {
                 </div>
               </div>
 
-              {/* Footer Wordmark */}
-              <div className="mb-6 select-none">
-                <span
-                  style={{
-                    fontFamily: '"Pratico Variable", sans-serif',
-                    fontSize: 'clamp(40px, 8vw, 68px)',
-                    fontWeight: 900,
-                  }}
-                  className="text-white uppercase tracking-tighter leading-none block"
-                >
-                  0Touch
-                </span>
+              {/* Interactive Animated SVG 0Touch Footer Logo */}
+              <div className="mb-4 select-none">
+                <FooterLogo className="max-w-[280px] sm:max-w-[420px] md:max-w-[560px]" />
               </div>
 
               {/* Navigation links */}
@@ -488,7 +480,7 @@ export const Features: React.FC = () => {
                 <Link to="/features" className="hover:text-white">Product</Link>
                 <Link to="/docs" className="hover:text-white">FAQ</Link>
                 <Link to="/contact" className="hover:text-white">Blog</Link>
-                <Link to="/viewer" className="hover:text-[#ff8066]">Cart</Link>
+                <Link to="/viewer" className="hover:text-[#74d2c2]">Cart</Link>
               </div>
 
               <p className="text-[11px] text-zinc-500 mt-6">
@@ -497,7 +489,7 @@ export const Features: React.FC = () => {
                   href="https://praveenai.tech/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#ff8066] hover:underline"
+                  className="text-[#74d2c2] hover:underline"
                 >
                   praveenai.tech
                 </a>
