@@ -545,43 +545,51 @@ export const Home: React.FC = () => {
       {/* 7. FOOTER / NEWSLETTER SECTION */}
       <footer className="footer bg-[#18181b] px-8 pt-12 md:pt-16 pb-8 md:pb-10 text-white w-full">
         <div className="footer__content-top page-width !p-0 max-w-6xl mx-auto flex flex-col items-center text-center">
-          <div className="newsletter--wrapper flex flex-col justify-center items-center gap-y-8 w-full">
-            <div className="footer-block__newsletter flex flex-col justify-center mx-auto max-w-xl">
+          <div className="newsletter--wrapper flex flex-col justify-center items-center w-full">
+            <div className="footer-block__newsletter flex flex-col justify-center items-center mx-auto max-w-xl w-full">
               <h2
-                className="footer-block__heading inline-richtext text-white mb-4 text-center"
+                className="footer-block__heading inline-richtext text-white mb-6 md:mb-8 text-center"
                 style={{
                   fontFamily: '"Pratico Variable", sans-serif',
                   fontSize: '36px',
-                  fontWeight: 600,
+                  fontWeight: 400,
+                  lineHeight: '115%',
                 }}
               >
-                Stay connected with <Logo className="h-7 md:h-8 w-auto text-[#74d2c2] inline-block align-middle mx-1.5" />
+                Explore my work, <strong className="text-[#74d2c2] font-normal">projects</strong><br className="hidden sm:inline" /> and experiments!
               </h2>
-              <p className="text-zinc-400 text-sm md:text-base mb-6 text-center">
-                Follow the development of 0Touch, explore new capabilities and stay informed about upcoming improvements.
-              </p>
 
-              <form onSubmit={handleSubscribe} className="newsletter-form__field-wrapper w-full flex items-center border-2 border-white rounded-full overflow-hidden bg-white/10 p-1">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email address"
-                  className="field__input placeholder-slate-400 w-full bg-transparent px-6 py-3 text-white text-base focus:outline-none"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                />
-                <button
-                  type="submit"
-                  className="loz-button loz-button-primary !py-2.5 !px-6 whitespace-nowrap text-xs md:text-sm"
-                >
-                  {subscribed ? 'UPDATED!' : 'GET UPDATES'}
-                </button>
+              <form onSubmit={handleSubscribe} className="w-full max-w-[560px]">
+                <div className="relative flex items-stretch border-2 border-black bg-white w-full shadow-none">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Your email address"
+                    className="w-full bg-white text-black placeholder:text-zinc-500 px-6 py-3.5 md:py-4 text-base md:text-lg focus:outline-none"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  />
+                  <button
+                    type="submit"
+                    aria-label="Subscribe"
+                    className="bg-[#ff8066] hover:bg-[#6f7bd4] text-black hover:text-white px-6 md:px-7 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0 cursor-pointer"
+                  >
+                    <svg width="28" height="24" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-5">
+                      <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
+                    </svg>
+                  </button>
+                </div>
+                {subscribed && (
+                  <p className="text-[#74d2c2] text-sm mt-3 text-center font-bold">
+                    Thank you for subscribing!
+                  </p>
+                )}
               </form>
             </div>
 
-            {/* Interactive Animated SVG 0Touch Footer Logo (matching The Loz) */}
-            <div className="w-full flex justify-center mt-2 select-none">
+            {/* Interactive Animated SVG 0Touch Footer Logo (matching The Loz) with generous vertical padding */}
+            <div className="w-full flex justify-center my-14 md:my-20 lg:my-24 select-none">
               <FooterLogo className="max-w-[320px] sm:max-w-[500px] md:max-w-[720px] lg:max-w-[850px]" />
             </div>
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FooterLogo } from '../components/FooterLogo';
-import { Logo } from '../components/Logo';
 
 export const Features: React.FC = () => {
   // Active mode: 0 = Slice Nav, 1 = Continuous Zoom, 2 = Windowing, 3 = Panning
@@ -446,32 +445,35 @@ export const Features: React.FC = () => {
           <footer className="footer bg-[#18181b] px-8 sm:px-12 py-16 text-white border-t-4 border-[#27272a] w-full">
             <div className="flex flex-col items-center text-center max-w-md mx-auto">
               
-              <div className="w-full flex flex-col items-center mb-10">
+              <div className="w-full flex flex-col items-center mb-8">
                 <h2
-                  className="text-white text-2xl sm:text-3xl font-extrabold mb-4"
-                  style={{ fontFamily: '"Pratico Variable", sans-serif' }}
+                  className="text-white text-2xl sm:text-3xl font-normal mb-6 text-center"
+                  style={{ fontFamily: '"Pratico Variable", sans-serif', lineHeight: '115%' }}
                 >
-                  Sign up for updates on <Logo className="h-5 sm:h-6 w-auto text-[#74d2c2] inline-block align-middle mx-1" /> technology
+                  Sign up for updates, <strong className="text-[#74d2c2] font-normal">discounts</strong><br className="hidden sm:inline" /> and giveaways!
                 </h2>
 
-                <div className="w-full flex items-center border-2 border-white rounded-full overflow-hidden bg-white/10 p-1">
+                <div className="relative flex items-stretch border-2 border-black bg-white w-full max-w-md shadow-none">
                   <input
                     type="email"
                     placeholder="Your email address"
-                    className="w-full bg-transparent px-4 py-2 text-white placeholder-slate-400 text-sm focus:outline-none"
+                    className="w-full bg-white text-black placeholder:text-zinc-500 px-5 py-3 text-sm focus:outline-none"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   />
                   <button
                     type="button"
-                    className="loz-button loz-button-primary !py-2 !px-5 text-xs font-black uppercase"
+                    aria-label="Subscribe"
+                    className="bg-[#ff8066] hover:bg-[#6f7bd4] text-black hover:text-white px-5 flex items-center justify-center border-l-2 border-black transition-colors duration-200 shrink-0 cursor-pointer"
                   >
-                    Subscribe
+                    <svg width="24" height="20" viewBox="0 0 29 25" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-4">
+                      <path d="M28 13.625L17 24.125C16.375 24.6875 15.4375 24.6875 14.875 24.0625C14.3125 23.4375 14.3125 22.5 14.9375 21.9375L23.25 14H2C1.125 14 0.5 13.375 0.5 12.5C0.5 11.6875 1.125 11 2 11H23.25L14.9375 3.125C14.3125 2.5625 14.3125 1.5625 14.875 1C15.4375 0.375 16.4375 0.375 17 0.9375L28 11.4375C28.3125 11.75 28.5 12.125 28.5 12.5C28.5 12.9375 28.3125 13.3125 28 13.625Z" fill="currentColor"></path>
+                    </svg>
                   </button>
                 </div>
               </div>
 
-              {/* Interactive Animated SVG 0Touch Footer Logo */}
-              <div className="mb-4 select-none">
+              {/* Interactive Animated SVG 0Touch Footer Logo with generous vertical padding */}
+              <div className="w-full flex justify-center my-12 md:my-16 lg:my-20 select-none">
                 <FooterLogo className="max-w-[280px] sm:max-w-[420px] md:max-w-[560px]" />
               </div>
 
