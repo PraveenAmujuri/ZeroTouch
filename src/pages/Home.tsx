@@ -437,7 +437,7 @@ export const Home: React.FC = () => {
                 <div className="image-with-text__text-item flex justify-end">
                   <div className="image-with-text__content max-w-[660px] text-left">
                     <h2
-                      className="image-with-text__heading inline-richtext !my-0 text-[#27272a]"
+                      className="image-with-text__heading inline-richtext !my-0 text-[#f3f4fb]"
                       style={{
                         fontFamily: '"Pratico Variable", sans-serif',
                         fontSize: 'clamp(28px, 6vw, 48px)',
@@ -448,7 +448,7 @@ export const Home: React.FC = () => {
                       Touchless interaction. A different way to navigate medical imaging.
                     </h2>
                     <div
-                      className="image-with-text__text rte text-body !my-5 text-[#27272a]/80"
+                      className="image-with-text__text rte text-body !my-5 text-[#f3f4fb]/85"
                       style={{
                         fontSize: 'clamp(16px, 3vw, 24px)',
                         lineHeight: '125%',
@@ -460,7 +460,7 @@ export const Home: React.FC = () => {
                     </div>
                     <Link
                       to="/features"
-                      className="loz-button loz-button-primary !text-white inline-flex text-xs sm:text-base"
+                      className="loz-button loz-button-primary inline-flex text-xs sm:text-base"
                     >
                       EXPLORE PRODUCT
                     </Link>
@@ -484,7 +484,7 @@ export const Home: React.FC = () => {
                 <div className="image-with-text__text-item flex justify-start order-2 md:order-1">
                   <div className="image-with-text__content max-w-[660px] text-left">
                     <h2
-                      className="image-with-text__heading inline-richtext !my-0 text-[#27272a]"
+                      className="image-with-text__heading inline-richtext !my-0 text-[#6f7bd4]"
                       style={{
                         fontFamily: '"Pratico Variable", sans-serif',
                         fontSize: 'clamp(28px, 6vw, 48px)',
@@ -492,11 +492,11 @@ export const Home: React.FC = () => {
                         lineHeight: '1.2',
                       }}
                     >
-                      <Logo className="h-7 sm:h-9 md:h-10 w-auto text-[#27272a] inline-block align-middle mr-2" />
+                      <Logo className="h-7 sm:h-9 md:h-10 w-auto text-[#6f7bd4] inline-block align-middle mr-2" />
                       Gesture Engine
                     </h2>
                     <div
-                      className="image-with-text__text rte text-body !my-5 text-[#27272a]/80"
+                      className="image-with-text__text rte text-body !my-5 text-[#6f7bd4]/85"
                       style={{
                         fontSize: 'clamp(16px, 3vw, 24px)',
                         lineHeight: '125%',
@@ -508,7 +508,7 @@ export const Home: React.FC = () => {
                     </div>
                     <Link
                       to="/features"
-                      className="loz-button loz-button-secondary !text-[#6f7bd4] !border-[#6f7bd4] hover:!bg-[#6f7bd4] hover:!text-white inline-flex text-xs sm:text-base group/gestures"
+                      className="loz-button loz-button-secondary inline-flex text-xs sm:text-base !text-[#6f7bd4] !border-[#6f7bd4] hover:!bg-[#6f7bd4] hover:!text-white group/gestures"
                     >
                       EXPLORE GESTURES
                       <span className="relative -top-[0.15rem]">
