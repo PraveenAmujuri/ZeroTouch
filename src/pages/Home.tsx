@@ -460,14 +460,14 @@ export const Home: React.FC = () => {
                       }}
                     >
                       <p>
-                        0Touch explores gesture-based interaction with medical images, allowing users to navigate DICOM studies through intuitive hand movements instead of relying entirely on traditional keyboard and mouse controls.
+                        Navigate DICOM studies through intuitive hand movements, bringing a new way to interact with medical images beyond traditional keyboard and mouse controls.
                       </p>
                     </div>
                     <Link
                       to="/features"
                       className="loz-button loz-button-primary"
                     >
-                      EXPLORE GESTURES
+                      EXPLORE PRODUCT
                     </Link>
                   </div>
                 </div>
@@ -508,7 +508,7 @@ export const Home: React.FC = () => {
                       }}
                     >
                       <p>
-                        Engineered for precise two-handed spatial gestures, providing sterile gesture control across CT, MR, X-Ray Cine, and Ultrasound imaging workspaces.
+                        Engineered for precise two-handed spatial gestures, providing touchless interaction with medical imaging workspaces.
                       </p>
                     </div>
                     <Link
