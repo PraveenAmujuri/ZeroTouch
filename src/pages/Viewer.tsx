@@ -23,7 +23,9 @@ import {
   Play,
   Pause,
   SkipBack,
-  SkipForward
+  SkipForward,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { parseDICOMBuffer, DICOMStudyMeta } from '../utils/dicomLoader';
 import { extractDicomFilesFromZip } from '../utils/zipLoader';
@@ -74,6 +76,9 @@ export const Viewer: React.FC = () => {
   const [recentStudies, setRecentStudies] = useState<Omit<CachedDICOMStudy, 'buffer'>[]>([]);
   const [showRecentDrawer, setShowRecentDrawer] = useState<boolean>(false);
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+
+  // Pixel Probe State
+  const [hoveredPixel, setHoveredPixel] = useState<{ x: number; y: number; val: number; unit: string } | null>(null);
 
   // Cine Playback state
   const [isPlayingCine, setIsPlayingCine] = useState<boolean>(false);
@@ -634,11 +639,49 @@ export const Viewer: React.FC = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isMouseDownRef.current) return;
-    setPanPos({
-      x: e.clientX - mouseStartRef.current.x,
-      y: e.clientY - mouseStartRef.current.y,
-    });
+    if (isMouseDownRef.current) {
+      setPanPos({
+        x: e.clientX - mouseStartRef.current.x,
+        y: e.clientY - mouseStartRef.current.y,
+      });
+    }
+
+    // Inspect pixel value under cursor in image space
+    if (studyMeta && dicomCanvasRef.current) {
+      const rect = dicomCanvasRef.current.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      ) {
+        const frameIdx = Math.max(0, Math.min(studyMeta.frames.length - 1, currentSlice));
+        const frame = studyMeta.frames[frameIdx];
+        if (frame) {
+          const normX = (e.clientX - rect.left) / rect.width;
+          const normY = (e.clientY - rect.top) / rect.height;
+          const pixelX = Math.floor(normX * frame.width);
+          const pixelY = Math.floor(normY * frame.height);
+          const pVal = frame.getPixelValue(pixelX, pixelY);
+          if (pVal !== null) {
+            const isCT = studyMeta.modality.toUpperCase() === 'CT';
+            setHoveredPixel({
+              x: pixelX,
+              y: pixelY,
+              val: Math.round(pVal.rescaled),
+              unit: isCT ? 'HU' : 'Intensity',
+            });
+            return;
+          }
+        }
+      }
+    }
+    setHoveredPixel(null);
+  };
+
+  const handleMouseLeave = () => {
+    isMouseDownRef.current = false;
+    setHoveredPixel(null);
   };
 
   const handleMouseUp = () => {
@@ -761,6 +804,19 @@ export const Viewer: React.FC = () => {
             }`}
           >
             {isFullscreen ? <Minimize className="w-4 h-4 text-black" /> : <Maximize className="w-4 h-4" />}
+          </button>
+
+          {/* Keyboard Shortcuts Help Button */}
+          <button
+            onClick={() => setShowHelpModal((prev) => !prev)}
+            title="Keyboard Shortcuts & Gestures Help (?)"
+            className={`p-1.5 border-2 transition-all ${
+              showHelpModal
+                ? 'bg-[#FF8066] text-black border-[#27272a] shadow-[2.5px_2.5px_0px_#ffffff]'
+                : 'bg-[#27272a] text-zinc-300 border-[#3f3f46] hover:bg-[#3f3f46] hover:text-white'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4" />
           </button>
 
           {/* Testbed Link */}
@@ -1020,6 +1076,7 @@ export const Viewer: React.FC = () => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
           onWheel={handleWheel}
         >
           {/* DICOM Render Canvas */}
@@ -1068,6 +1125,11 @@ export const Viewer: React.FC = () => {
                 <div className="text-[11px] text-white/70">
                   Zoom: {zoomLevel.toFixed(2)}x
                 </div>
+                {hoveredPixel && (
+                  <div className="text-[11px] text-[#FF8066] font-bold">
+                    X: {hoveredPixel.x} Y: {hoveredPixel.y} | {hoveredPixel.val} {hoveredPixel.unit}
+                  </div>
+                )}
               </div>
 
               {/* Bottom-Right Corner: Window Level & Resolution */}
@@ -1324,6 +1386,119 @@ export const Viewer: React.FC = () => {
           <div className="absolute bottom-4 left-4 z-40 p-3 rounded-xl bg-[#27272a] text-[#FF8066] border border-[#FF8066]/40 text-xs flex items-center gap-2 font-mono shadow-xl">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{cameraError}</span>
+          </div>
+        )}
+
+        {/* Keyboard Shortcuts & Gestures Quick Help Modal */}
+        {showHelpModal && (
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowHelpModal(false)}
+          >
+            <div
+              className="bg-[#18181b] border-2 border-[#27272a] shadow-[6px_6px_0px_#09090b] max-w-xl w-full p-6 text-zinc-200 font-mono space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b-2 border-[#27272a] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-[#FF8066] rounded-full" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                    0Touch Control Quick Reference
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-1 hover:bg-[#27272a] text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Two Column Grid: Gestures & Keyboard */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* Gestures Reference */}
+                <div className="space-y-2 bg-[#222226] p-3 border border-[#27272a]">
+                  <span className="font-bold text-[#FF8066] uppercase text-[11px] block border-b border-zinc-700 pb-1">
+                    Touchless Gestures
+                  </span>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">1 + 1 Poses:</span>
+                      <span className="font-bold text-white">Slice Nav Mode</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">2 + 2 Poses:</span>
+                      <span className="font-bold text-white">Zoom Mode</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">3 + 3 Poses:</span>
+                      <span className="font-bold text-white">Windowing Mode</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">4 + 4 Poses:</span>
+                      <span className="font-bold text-white">Panning Mode</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Open + Fist:</span>
+                      <span className="font-bold text-white">Step A (Prev / In)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Fist + Open:</span>
+                      <span className="font-bold text-white">Step B (Next / Out)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Fist + Fist:</span>
+                      <span className="font-bold text-zinc-400">Safety Rest</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Keyboard Shortcuts */}
+                <div className="space-y-2 bg-[#222226] p-3 border border-[#27272a]">
+                  <span className="font-bold text-[#FF8066] uppercase text-[11px] block border-b border-zinc-700 pb-1">
+                    Keyboard Shortcuts
+                  </span>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">1</kbd> - <kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">4</kbd></span>
+                      <span className="font-bold text-white">Switch Modes</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">←</kbd> <kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">→</kbd></span>
+                      <span className="font-bold text-white">Step Slices</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">Space</kbd></span>
+                      <span className="font-bold text-white">Play / Pause Cine</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">+</kbd> / <kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">-</kbd></span>
+                      <span className="font-bold text-white">Zoom In / Out</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">R</kbd></span>
+                      <span className="font-bold text-white">Reset Viewport</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">F</kbd></span>
+                      <span className="font-bold text-white">Fullscreen</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">I</kbd></span>
+                      <span className="font-bold text-white">Invert Grayscale</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400"><kbd className="px-1 py-0.5 bg-[#27272a] border border-zinc-700 text-white">G</kbd></span>
+                      <span className="font-bold text-white">Toggle Gestures</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-zinc-500 text-center pt-1 border-t border-[#27272a]">
+                Press <kbd className="px-1.5 py-0.5 bg-[#27272a] border border-zinc-700 text-zinc-300">?</kbd> or <kbd className="px-1.5 py-0.5 bg-[#27272a] border border-zinc-700 text-zinc-300">Esc</kbd> anytime to close
+              </div>
+            </div>
           </div>
         )}
       </div>

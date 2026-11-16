@@ -21,6 +21,7 @@ export interface DecodedDICOMFrame {
   bitsAllocated: number;
   bitsStored: number;
   pixelRepresentation: number;
+  getPixelValue: (x: number, y: number) => { raw: number; rescaled: number } | null;
   renderToCanvas: (canvas: HTMLCanvasElement, customWc?: number, customWw?: number, invert?: boolean) => void;
 }
 
@@ -154,6 +155,24 @@ export function parseDICOMBuffer(arrayBuffer: ArrayBuffer, fileName: string): DI
       bitsAllocated,
       bitsStored,
       pixelRepresentation,
+      getPixelValue: (x: number, y: number) => {
+        if (x < 0 || x >= columns || y < 0 || y >= rows) return null;
+        const index = y * columns + x;
+        if (bitsAllocated === 8) {
+          const raw = frameBytes[index] ?? 0;
+          return { raw, rescaled: raw * rescaleSlope + rescaleIntercept };
+        } else {
+          const buffer = frameBytes.buffer;
+          const byteOffset = frameBytes.byteOffset;
+          const length = rows * columns;
+          const pixels =
+            pixelRepresentation === 1
+              ? new Int16Array(buffer, byteOffset, length)
+              : new Uint16Array(buffer, byteOffset, length);
+          const raw = pixels[index] ?? 0;
+          return { raw, rescaled: raw * rescaleSlope + rescaleIntercept };
+        }
+      },
       renderToCanvas: (canvas, customWc, customWw, invert = false) => {
         canvas.width = columns;
         canvas.height = rows;
